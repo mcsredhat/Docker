@@ -1,0 +1,3364 @@
+
+
+
+
+# Run the hello-world Docker image to verify that Docker is installed and working correctly
+sudo docker run hello-world 
+
+# List all running Docker containers
+sudo docker ps
+
+# List all Docker images currently downloaded on the system
+sudo docker images
+
+****Running Ubuntu Container****
+
+# Run a new Ubuntu container (this will download the Ubuntu image if not already downloaded)
+sudo docker run ubuntu
+
+# List all running Docker containers (should include the Ubuntu container if it is still running)
+sudo docker ps 
+
+# List all Docker containers, including those that are stopped
+sudo docker ps -a
+
+# List all Docker images currently downloaded on the system (should now include the Ubuntu image)
+sudo docker images
+
+# List all Docker containers, including those that are stopped (alternative command)
+sudo docker ps -a 
+sudo docker container ls -a
+
+# Run a new Ubuntu container in interactive mode with a pseudo-TTY
+sudo docker run -it ubuntu
+
+# List the contents of the /bin directory in the running Ubuntu container
+ls bin
+
+# Display the contents of the /etc/os-release file, which shows the OS details of the running container
+cat /etc/os-release
+
+# Display the hostname of the running container
+hostname 
+
+# Display the IP address of the running container
+hostname -i
+
+# Exit the running container and return to the host system's shell
+exit
+
+# List all Docker containers, including those that are stopped (should now include the recently exited Ubuntu container)
+sudo docker ps -a
+
+# List all Docker images currently downloaded on the system
+sudo docker images
+***************Adding Favicon to the Project********************
+Here's a commented version of your updated Docker commands:
+
+
+************Running Busybox Container***********
+
+# Run a Busybox container (this will download the Busybox image if not already downloaded)
+sudo docker run busybox
+
+# List all running Docker containers
+sudo docker ps 
+
+# List all Docker containers, including those that are stopped
+sudo docker ps -a
+
+# Run a Busybox container in interactive mode with a pseudo-TTY
+sudo docker run -it busybox
+
+# List the contents of the current directory in the running Busybox container
+ls 
+
+# List the contents of the /bin directory in the running Busybox container
+ls bin 
+
+# Display the system uptime in the running Busybox container
+uptime
+
+# Create a new directory named folder1 in the running Busybox container
+mkdir folder1
+
+# Change to the newly created directory folder1
+cd folder1
+
+# Create a new empty file named file1
+touch file1
+
+# Exit the running container and return to the host system's shell
+exit
+
+# List all running Docker containers (should not include the exited Busybox container)
+sudo docker ps
+
+# List all Docker containers, including those that are stopped, and filter for Busybox containers
+sudo docker ps -a | grep busybox
+
+# List all Docker images currently downloaded on the system
+sudo docker images
+
+*****************Alpine Versus Busybox Images****************
+
+# Pull the Alpine image from the Docker repository
+sudo docker pull alpine
+
+# List all Docker images currently downloaded on the system (should now include the Alpine image)
+sudo docker images
+
+# Run a new Alpine container in interactive mode with a pseudo-TTY
+sudo docker run -it alpine
+
+# In a new terminal, run a new Busybox container in interactive mode with a pseudo-TTY
+sudo docker run -it busybox
+
+# List the contents of the current directory in the running Alpine container
+ls
+
+# List the contents of the current directory in the running Busybox container
+"ls"
+
+# Display the contents of the /etc/os-release file (shows OS details, not found in Busybox)
+cat /etc/os-release
+
+# Attempt to display the contents of the /etc/os-release file in Busybox (will not be found)
+"cat /etc/os-release"
+
+# List the contents of the /bin directory in the running Alpine container
+ls bin
+
+# List the contents of the /bin directory in the running Busybox container
+"ls bin"
+
+# List the contents of the /etc directory in the running Alpine container
+ls /etc
+
+# List the contents of the /etc directory in the running Busybox container
+"ls /etc"
+
+# List all files, including hidden ones, in the /bin directory in the running Alpine container
+ls -a bin
+
+# List all files, including hidden ones, in the /bin directory in the running Busybox container
+"ls -a bin"
+
+# Run the Busybox shell in the Alpine container (using the Busybox executable)
+busybox
+
+# Run the Busybox shell in the Busybox container
+"busybox"
+
+# Display help for the ifconfig command in the Alpine container
+ifconfig --help
+
+# Display help for the ifconfig command in the Busybox container
+"ifconfig --help"
+
+# List all files with detailed information in the /sbin directory in the Alpine container (not found)
+ls -la sbin
+
+# List all files with detailed information in the /sbin directory in the Busybox container (not found)
+"ls -la sbin"
+
+# Display help for the apk package manager in the Alpine container
+apk --help
+
+# Display help for the apk package manager in the Busybox container (not found)
+"apk --help"
+
+# Use Busybox to run ifconfig in the Alpine container
+busybox ifconfig
+
+# Use Busybox to run traceroute to google.com in the Alpine container
+busybox traceroute google.com
+
+# Use Busybox to run ping to google.com in the Alpine container
+busybox ping google.com
+
+# List the contents of the /bin directory in the Alpine container
+ls bin
+
+# Exit the running Alpine container
+exit
+
+***************Running Nginx with Exposed Port************
+
+# Pull the Nginx image from the Docker repository
+sudo docker pull nginx
+
+# List all Docker images currently downloaded on the system and filter for the Nginx image
+sudo docker images | grep nginx
+
+# Run an Nginx container
+sudo docker run nginx
+
+# In a new terminal, list all running Docker containers (should include the Nginx container)
+sudo docker ps 
+
+# Stop the running Nginx container using its name or ID
+sudo docker stop <name_or_ID_of_container>
+
+# Stop the running Nginx container using its ID (alternative method)
+sudo docker stop <ID_of_nginx>
+
+# Forcefully remove the Nginx image from the system
+sudo docker image rmi -f nginx
+
+# List all running Docker containers (should not include the stopped Nginx container)
+sudo docker ps
+
+# Exit the terminal (if needed)
+exit
+
+# Run an Nginx container and map port 8888 on the host to port 80 on the container
+sudo docker run -p 8888:80 nginx
+
+# Open a web browser and go to localhost:8888 to view the Nginx welcome page
+open the browser and type "localhost:8888"
+
+******************Nginx Container with Custom Content************
+
+# Change to the Desktop directory
+cd Desktop 
+
+# Create a new directory named containers
+mkdir containers
+
+# Change to the newly created containers directory
+cd containers
+
+# Create a new directory named nginx
+mkdir nginx
+
+# Change to the newly created nginx directory
+cd nginx
+
+# Create and edit a new file named index.html using the vi editor
+vi index.html
+
+# Add the following content to the index.html file
+<h1>hello this custom web page!</h1>
+
+# Save the file and exit the editor
+save it
+
+# List the contents of the current directory to verify the index.html file is present
+ls 
+
+# List all Docker images currently downloaded on the system
+sudo docker images
+
+# Run an Nginx container, map port 8889 on the host to port 80 on the container, and mount the local nginx directory to the container's /usr/share/html directory
+sudo docker run -p 8889:80 -v /home/assulai/Desktop/containers/nginx:/usr/share/html nginx
+
+# Open a web browser and go to localhost:8889 to view the custom Nginx web page
+open the browser and type "localhost:8889"
+
+# In a new terminal, list all running Docker containers
+sudo docker ps
+
+# Change to the nginx directory on the host system
+cd /home/assulai/Desktop/containers/nginx
+
+# Edit the index.html file to update its content using the vi editor
+vi index.html
+
+# Update the content to the following
+<h1>hello this is updated custom web page!</h1>
+
+# Save the file and exit the editor
+save it
+
+# Open a web browser and go to localhost:8889 to view the updated custom Nginx web page
+open the browser and type "localhost:8889"
+
+Sure! Here are the commands with comments explaining each step:
+
+### Creating Multiple Ubuntu Containers from the Same Image
+
+
+# Run an Ubuntu container interactively with a pseudo-TTY
+sudo docker run -it ubuntu
+
+# List directory contents inside the container
+ls
+
+# Create a new directory named 'test'
+mkdir test
+
+# Change to the 'test' directory
+cd test
+
+# Create an empty file named 'test.txt'
+touch test.txt
+
+# Go back to the parent directory
+cd ..
+
+# List directory contents to see the 'test' directory
+ls
+
+# Display the hostname of the container
+hostname
+
+# Display the container's IP address
+hostname -i
+
+# *** Open another terminal and run the following commands ***
+
+# Run another Ubuntu container interactively with a pseudo-TTY
+sudo docker run -it ubuntu
+
+# List directory contents inside the second container
+ls
+
+# Create a new directory named 'test2'
+mkdir test2
+
+# Change to the 'test2' directory
+cd test2
+
+# Create an empty file named 'test2.txt'
+touch test2.txt
+
+# Go back to the parent directory
+cd ..
+
+# Display the hostname of the second container
+hostname
+
+# List directory contents to see the 'test2' directory
+ls
+
+# Display the second container's IP address
+hostname -i
+```
+
+### Running Multiple Nginx Servers
+
+
+# Navigate to the directory where containers will be managed
+cd /home/assulai/Desktop/containers/
+
+# Create two directories for two separate Nginx servers
+sudo mkdir nginx1 nginx2
+
+# Copy the contents of the original nginx directory into the new directories
+sudo cp -r nginx/* nginx1 nginx2
+
+# Navigate to the first Nginx server directory
+cd nginx1
+
+# List directory contents to verify the copy
+ls
+
+# Open the index.html file for editing
+vi index.html
+
+# Edit the file to set the title and heading for the first Nginx server
+<title> NGINX1 SERVER</title>
+<h1>hello from first server of nginx !</h1>
+# Save the file and exit the editor
+
+# Navigate to the second Nginx server directory
+cd ../nginx2
+
+# List directory contents to verify the copy
+ls
+
+# Open the index.html file for editing
+vi index.html
+
+# Edit the file to set the title and heading for the second Nginx server
+<title> NGINX2 SERVER</title>
+<h1>hello from second server of nginx !</h1>
+# Save the file and exit the editor
+
+# *** Open two terminals ***
+
+# In the first terminal, navigate to the first Nginx server directory
+cd /home/assulai/Desktop/containers/nginx1
+
+# Display the current working directory
+pwd
+
+# Run an Nginx container, mapping port 5555 on the host to port 80 in the container, mounting the current directory, and naming the container 'nginx1'
+sudo docker run -p 5555:80 -v $PWD:/usr/share/nginx/html --name nginx1 nginx 
+
+# Open a web browser and navigate to "localhost:5555" to see the first Nginx server
+
+# In the second terminal, navigate to the second Nginx server directory
+cd /home/assulai/Desktop/containers/nginx2
+
+# Display the current working directory
+pwd
+
+# Run another Nginx container, mapping port 5556 on the host to port 80 in the container, mounting the current directory, and naming the container 'nginx2'
+sudo docker run -p 5556:80 -v $PWD:/usr/share/nginx/html --name nginx2 nginx 
+
+# Open a web browser and navigate to "localhost:5556" to see the second Nginx server
+
+# List all Docker containers (both running and stopped) and filter for nginx containers
+sudo docker ps -a | grep nginx*
+```
+
+### Cleaning Up Stopped Containers
+
+
+# Navigate to the directory where containers are managed
+cd /home/assulai/Desktop/containers
+
+# List all running Docker containers
+sudo docker ps 
+
+# Start the stopped nginx2 container
+sudo docker start nginx2
+
+# List all running Docker containers to verify nginx2 is running
+sudo docker ps
+
+# Stop the running nginx2 container
+sudo docker stop nginx2 
+
+# List all running Docker containers to verify nginx2 is stopped
+sudo docker ps
+
+# Remove the stopped nginx2 container
+sudo docker rm nginx2
+
+# List all Docker containers to verify nginx2 is removed
+sudo docker ps 
+
+# Display help information for Docker container commands
+sudo docker container --help
+
+# Remove all stopped containers
+sudo docker container prune 
+
+# List all Docker containers (both running and stopped) to verify cleanup
+sudo docker ps -a
+
+# ** Add two Docker Alpine containers **
+
+# Run an Alpine container
+sudo docker run alpine
+
+# Run another Alpine container
+sudo docker run alpine
+
+# List all Docker containers (both running and stopped)
+sudo docker ps -a
+
+# Remove the first Alpine container using its container ID
+sudo docker container rm "id of first container"
+
+# Remove the second Alpine container using its container ID
+sudo docker container rm "id of second container"
+
+# List all Docker containers to verify they are removed
+sudo docker ps -a
+```
+
+### Creating Python Containers
+
+
+# Pull the latest Python image from Docker Hub
+sudo docker pull python 
+
+# List all Docker images to verify the Python image is available
+sudo docker images
+
+# Run a Python container
+sudo docker run python 
+
+# List all Docker containers (both running and stopped) to verify the Python container ran
+sudo docker ps -a
+
+# Run a Python container interactively with a pseudo-TTY
+sudo docker run -it python
+
+# Exit the Python interactive shell
+type exit()
+```
+
+### Simple Python Program
+
+
+# Navigate to the directory where containers are managed
+cd /home/assulai/Desktop/containers
+
+# Create a new directory for Python programs
+mkdir python 
+
+# List directory contents to verify creation
+ls 
+
+# Navigate to the new Python directory
+cd python
+
+# Create and open a new Python file for editing
+vi hello-world.py
+
+# Add a simple print statement to the Python file
+print('hello from the python containers!')
+# Save the file and exit the editor
+
+# Run a Python container, mounting the current directory and executing the Python script
+sudo docker run -it -v $PWD:/app python python3 /app/hello-world.py
+
+# Alternatively, run a Python container, setting the working directory and executing the Python script
+sudo docker run -it -v $PWD:/app -w /app python python3 hello-world.py
+
+# Create and open a new Python file for a calendar application
+vi calendar-app.py
+
+# Add code for a simple calendar application
+import calendar
+print('Welcome to calendar application')
+year = int(input("Please enter the year: "))
+month = int(input("Please enter the month: "))
+print(calendar.month(year, month))
+print("Have a nice day")
+# Save the file and exit the editor
+
+# Run a Python container, mounting the current directory, setting the working directory, and executing the calendar application
+sudo docker run -it -v $PWD:/app -w /app python python3 calendar-app.py
+```
+
+### Running Node.js Containers
+
+
+# Check Node.js version (command not found)
+node -v "command not found, but can be installed with 'sudo npm install nodejs'"
+
+# Check npm version (command not found)
+npm -v "command not found, but can be installed with 'sudo apt install npm'"
+
+# Pull the latest Node.js image from Docker Hub
+docker pull node
+
+# List all Docker images to verify the Node.js image is available
+docker images
+
+# Run a Node.js container interactively with a pseudo-TTY
+docker run -it node
+
+# Open the Node.js interactive shell
+.help
+
+# Print a message from the Node.js container
+console.log('Hello from Node.js container')
+```
+
+### Hello World Application with Node
+
+
+# Navigate to the directory where containers are managed
+cd /home/assulai/Desktop/container
+
+# Create a new directory for Node.js programs
+mkdir node
+
+# Navigate to the new Node.js directory
+cd node
+
+# Create and open a new JavaScript file for editing
+vi hello.js
+
+# Add a simple console log statement to the JavaScript file
+console.log('this application was executed by Node.js container');
+# Save the file and exit the editor
+
+# List all Docker containers (both running and stopped)
+sudo docker ps -a
+```
+Sure, here is a detailed explanation with comments added to each command:
+
+### Using Path Variable in Volume Mapping
+
+
+# List all running Docker containers
+sudo docker ps
+
+# Run an Nginx container, mapping port 8889 on the host to port 80 in the container,
+# and mounting the current directory to /usr/share/nginx/html inside the container
+sudo docker run -p 8889:80 -v $PWD:/usr/share/html nginx
+
+# Open a browser and navigate to "localhost:8889" to view the Nginx server
+open the browser and type "localhost:8889"
+
+# Stop the running Nginx container by pressing Ctrl+C
+ctrl+c
+
+# Move to the parent directory
+cd ..
+
+# Run another Nginx container, mapping port 8889 on the host to port 80 in the container,
+# and mounting the current directory (parent directory now) to /usr/share/nginx/html using $PWD variable
+sudo docker run -p 8889:80 -v $PWD:/usr/share/html nginx "using variable instead of full path of folder"
+
+# Open a browser and navigate to "localhost:8889" to view the Nginx server,
+# but you will encounter a 403 Forbidden error due to incorrect directory permissions
+open the browser and type "localhost:8889" " the result is 403 Forbidden"
+```
+
+### Running Containers in Background
+
+
+# Run an Alpine container which will terminate immediately after running the default command
+sudo docker run alpine " will run the command after that will terminate the container"
+
+# List all Docker containers, including stopped ones, to verify the Alpine container has terminated
+sudo docker ps -a
+
+# Run an Alpine container interactively, connecting it to standard input
+sudo docker run -i alpine
+
+# List directory contents inside the Alpine container
+ls 
+
+# Attempt to stop the Alpine container by pressing Ctrl+C, but it won't exit
+ctrl+c " you can not exit from container"
+
+# *** Open another terminal to stop the Alpine container ***
+
+# List all running Docker containers to get the container ID of the Alpine container
+sudo docker ps
+
+# Stop the running Alpine container using its container ID
+sudo docker stop <container_id> "id of alpaine container"
+
+# Go back to the main terminal to verify the Alpine container has terminated
+"back to main terminal will find apline container is terminated."
+
+# Run an Nginx container, mapping port 8082 on the host to port 80 in the container
+sudo docker run -p 8082:80 nginx
+
+# Stop the running Nginx container by pressing Ctrl+C
+ctrl+c
+
+# Run an Nginx container in detached mode (-d flag) mapping port 8082 on the host to port 80 in the container
+sudo docker run -p 8082:80 -d nginx
+
+# List all running Docker containers to get the container ID of the detached Nginx container
+sudo docker ps
+
+# Display logs from the running Nginx container using its container ID
+sudo docker logs <container_id> "id of nginx container"
+
+# Stop the running Nginx container using its container ID
+sudo docker stop <container_id> "id of nginx container"
+```
+
+### Running Container with Pseudo TTY
+
+
+# Display help information for Docker commands
+sudo docker --help
+
+# Explain the -t (tty) option: it allocates a pseudo-TTY
+t = tty option '-t' means in 'docker run' command. and it allocates a pseudo-TTY.
+
+# Explain the -i (interactive) option: it keeps STDIN open even if not attached
+i= interactive "'-i' or '--interactive'; and with this option in place, you will be connected to 'STDIN', standard input, or a specific process that is running inside of the container. Okay. Let's first create container using only '-i' option.
+
+# Run an Alpine container interactively (-i flag)
+sudo docker run -i alpine
+
+# List directory contents inside the Alpine container
+ls 
+
+# Exit the Alpine container
+exit
+
+# List all running Docker containers to verify the container has terminated
+sudo docker ps
+
+# Run an Alpine container with a pseudo-TTY (-t flag), but without interactive mode
+sudo docker run -t alpine " you can not run any cmd"
+
+# *** Open another terminal to stop the Alpine container ***
+
+# List all running Docker containers to get the container ID of the Alpine container
+sudo docker ps
+
+# Kill the running Alpine container using its container ID
+sudo docker kill <container_id> "id of alpaine container"
+
+# Run an Alpine container with both interactive and pseudo-TTY flags (-it)
+sudo docker run -it alpine
+
+# Change directory to /bin inside the Alpine container
+cd bin
+
+# List directory contents inside /bin in the Alpine container
+ls 
+
+# Exit the Alpine container (Ctrl+C might not work)
+exit " but ctrl+c not working"
+
+# List all running Docker containers to verify the container has terminated
+sudo docker ps
+
+# Run an Ubuntu container with both interactive and pseudo-TTY flags (-it)
+sudo docker run -it ubuntu
+
+# Change directory to /bin inside the Ubuntu container
+cd bin
+
+# List directory contents inside /bin in the Ubuntu container
+ls 
+
+# Exit the Ubuntu container (Ctrl+C might not work)
+exit " but ctrl+c not working"
+
+# List all running Docker containers to verify the container has terminated
+sudo docker ps
+```
+
+### Express Web Server Using Node
+
+
+# Navigate to the directory where Node.js projects are managed
+cd /home/assulai/Desktop/container/node
+
+# Create a new directory for the Express project
+mkdir express
+
+# Navigate to the new Express project directory
+cd express
+
+# Create and open a new JavaScript file for editing
+vi index.js
+
+# ** Open the browser and search on npmjs **
+
+# Search for "express" on npmjs and copy the example code
+# Add the following code to index.js
+vi index.js
+const express = require('express')
+const app = express()
+
+app.get('/', function (req, res) {
+  res.send('This Express app was executed by node.js container inside of docker')
+})
+
+app.listen(3000)
+
+# Run a Node.js container, mounting the current directory and setting the working directory
+# Attempt to run the index.js file (error: module not found)
+docker run -v $PWD:/app -w /app node node index.js " error module not found"
+
+# Run a Node.js container, mounting the current directory and setting the working directory
+# Attempt to install npm packages (error: no package.json)
+docker run -v $PWD:/app -w /app node npm install "Could not read package.json: Error: ENOENT: no such file or directory, open '/app/package.json'"
+
+# Initialize a new Node.js project to create package.json
+docker run -v $PWD:/app -w /app node npm init
+
+# Run the npm init command interactively to set up package.json
+docker run -v $PWD:/app -w /app -it node npm init 
+"press enter to get the default creation of it"
+
+# Install the Express package
+docker run -v $PWD:/app -w /app -it node npm install express
+
+# Run the Express app
+docker run -v $PWD:/app -w /app -it node node index.js
+
+# Try to connect to the server via the browser at "localhost:3000"
+# To fix, map the internal port 3000 to an external port
+# Stop the running Node.js container
+press ctrl+c "not working"
+
+# *** Open another terminal ***
+
+# List all running Docker containers to get the container ID of the Node.js container
+docker ps 
+
+# Stop the running Node.js container using its container ID
+docker stop <container_id> "bdb"
+
+# ** Back to the main terminal, verify the Node.js container has stopped **
+
+# Run the Express app, mapping port 3000 on the host to port 3000 in the container
+docker run -v $PWD:/app -w /app -it -p 3000:3000 node node index.js
+
+# Connect to the server via the browser at "localhost:3000"
+```
+
+### Add Handling of the SIGINT and SIGTERM Signals
+
+---
+# Change to the specified directory
+cd /home/assulai/Desktop/containers/node/express
+
+# Run a Docker container:
+# - Mount the current directory ($PWD) to /app in the container (-v $PWD:/app)
+# - Set the working directory in the container to /app (-w /app)
+# - Run in interactive mode with a terminal (-it)
+# - Publish port 3000 on the host to port 3000 in the container (-p 3000:3000)
+# - Use the node image and run `node index.js`
+docker run -v $PWD:/app -w /app -it -p 3000:3000 node node index.js
+
+# Try to stop the container using Ctrl+C (SIGINT), but it doesn't work because the signal is not being handled.
+```
+
+**Modify `index.js` to handle SIGINT:**
+---
+# Open the index.js file for editing
+vi index.js
+
+# Add the following content to handle SIGINT
+const express = require('express');  # Require the express module
+const process = require('process'); # Require the process module
+const app = express();              # Create an Express application
+
+# Handle SIGINT (Ctrl+C)
+process.on('SIGINT', () => {
+    console.log('application is being interrupted');
+    process.exit(0);  # Exit the process with a status code of 0
+});
+
+# Define a route that sends a response
+app.get('/', function (req, res) {
+  res.send('This Express app was executed by node.js container inside of docker ');
+});
+
+# Start the application, listening on port 3000
+app.listen(3000);
+```
+
+### Test the Updated Container
+---
+# Open another terminal to list all Docker containers
+docker ps -a
+
+# Stop the running node.js container (replace "7bd" with the actual container ID)
+docker kill "7bd"
+
+# Return to the main terminal
+# Run the container again
+docker run -v $PWD:/app -w /app -it -p 3000:3000 node node index.js
+
+# Now, Ctrl+C should work as SIGINT is handled
+```
+
+**Add handling for SIGTERM:**
+---
+# Open the index.js file for editing
+vi index.js
+
+# Add the following content to handle SIGTERM
+process.on('SIGTERM', () => {
+    console.log('application is being terminated');
+    process.exit(0);  # Exit the process with a status code of 0
+});
+
+# Save the file
+```
+
+### Test the Updated Container with SIGTERM
+---
+# Run the container again
+docker run -v $PWD:/app -w /app -it node node index.js
+
+# Try to stop the container using Ctrl+C (it will handle both SIGINT and SIGTERM)
+docker ps
+```
+
+### Challenge: Create Files Handling Node App
+---
+# Navigate to the node directory
+cd /home/assulai/Desktop/containers/node/
+
+# Create a new directory named 'files'
+mkdir files
+
+# Change to the 'files' directory
+cd files
+
+# Open a new file named index.js for editing
+vi index.js
+
+# Add the following content to index.js
+const fs = require('fs');  # Require the filesystem module
+const readline = require('readline').createInterface({
+    input: process.stdin,
+    output: process.stdout
+});  # Create an interface for reading input
+
+# Prompt the user to enter a filename
+readline.question('Enter filename: ', filename => {
+    # Prompt the user to enter some text
+    readline.question('Enter some text: ', text => {
+        # Write the text to a file
+        fs.writeFile(`${filename}.txt`, text, err => {
+            if (err) throw err;  # Throw an error if there is an issue
+            console.log('File was created');
+            readline.close();  # Close the readline interface
+        });
+    });
+});
+
+# Save the file
+```
+
+### Run the Files Handling Node App
+---
+# Run a Docker container to execute the Node.js app
+docker run -v $PWD:/app -w /app -it node node index.js
+
+# After running, you can list files to verify the file was created
+ls
+```
+
+### Pulling Mongo Image and Creating the First Mongo Container
+---
+# Pull the MongoDB image from Docker Hub
+sudo docker pull mongo
+
+# List Docker images to confirm the MongoDB image is pulled
+sudo docker images
+
+# Run a MongoDB container
+sudo docker run mongo
+
+# The container will start, but won't be interactive
+```
+
+### Starting Additional Processes in the Running Container
+---
+# Open a new terminal to list running containers
+sudo docker ps
+
+# Display help information for the docker command
+sudo docker --help
+
+# Execute a bash shell in the running MongoDB container (replace CONTAINER ID with actual ID)
+sudo docker exec -it CONTAINER_ID bash
+
+# List all running processes
+ps -e
+
+# Alternatively, use the aux option for more detailed process information
+ps -aux
+
+# Open another terminal and execute a shell in the MongoDB container
+sudo docker exec -it CONTAINER_ID sh
+
+# Return to the second terminal and list all processes to see the new shell process
+ps -aux
+```
+
+### What is Entry Point and Where is it Located
+---
+# Inspect the MongoDB container to find the entry point script
+sudo docker inspect CONTAINER_ID
+
+# Search for "Path" to find the entry point script
+# The output will show the path to the docker-entrypoint.sh script
+
+# In the second terminal, list the contents of the /usr/local/bin directory
+ls /usr/local/bin
+
+# Display the content of the docker-entrypoint.sh script
+cat /usr/local/bin/docker-entrypoint.sh
+
+# List the contents of the /usr/bin directory
+ls /usr/bin
+```
+
+### Creating New Mongo Database Using Mongo Shell
+---
+# Start a MongoDB container in detached mode
+docker run -d --name mongo mongo:6
+
+# Execute the MongoDB shell in the running container
+docker exec -it mongo mongosh
+
+# Check the MongoDB version
+test> db.version
+
+# List all databases
+show dbs
+
+# Switch to the test database
+test> db
+
+# Insert documents into the animals collection
+test> db.animals.insert({"animal": "cat"})
+test> db.animals.insert({"animal": "dog"})
+test> db.animals.insert({"animal": "monkey"})
+
+# Find all documents in the animals collection
+test> db.animals.find()
+
+# Exit the MongoDB shell
+exit
+
+# Verify the data persists by running a new container and checking the records
+docker ps
+docker stop 515
+docker run -d mongo:6
+
+# Open another terminal and check running containers
+docker ps
+docker run -d mongo:6
+
+# List all databases to confirm the data persists
+test> show dbs
+test> exit
+docker stop 34bc
+```
+
+### Additional Information
+---
+# Prune unused Docker images
+docker image prune
+
+# Force remove the MongoDB image
+docker image rm -f mongo:6
+
+# Start the MongoDB container again
+docker start eaf
+
+# List running containers
+docker ps
+
+# Execute the MongoDB shell in the running container
+docker exec -it eaf mongosh
+
+# List all databases
+test> show dbs
+
+# Find documents in the animals collection
+test> db.animals.find()
+```
+
+### Running Mongo Container with Persistent Database
+---
+# List running containers
+docker ps
+
+# Start the MongoDB container
+docker start eaf
+
+# Execute a bash shell in the running container
+docker exec -it eaf bash
+
+# List the contents of the current directory
+ls
+
+# List the contents of the data directory
+ls data
+ls data/db
+
+# Exit the bash shell
+exit
+
+# List all containers
+docker ps
+
+# Stop the running container
+docker stop eaf
+
+# List all containers including stopped ones
+docker ps -a
+
+# Prune stopped containers
+docker container prune
+
+# List all containers again
+docker ps -a
+
+# Navigate to the containers directory and create directories for MongoDB
+cd /home/assulai/Desktop/containers
+mkdir -p mongo/db
+
+# Change to the mongo directory
+cd mongo
+
+# Run a MongoDB container with a volume mounted to persist data
+docker run -d -v $PWD/db:/data/db mongo:6
+
+# List running containers
+docker ps
+
+# List the contents of the db directory to confirm data is persisted
+ls db
+
+# Check the structure of the persisted database files
+# List the details of the files
+ls -la db
+
+# Display the contents of a specific file
+cat db/index-9-6166886137279549004.wt
+
+# List running containers
+docker ps
+
+# Stop and remove the MongoDB container
+docker stop e67ff
+docker rm e67ff
+
+# List all containers
+docker ps -a
+
+# Run a new MongoDB container with the same volume mounted
+docker run -d -v $PWD/db:/data/db mongo:6
+
+# List running containers
+docker ps
+
+# Execute the MongoDB shell in the running container
+docker exec -it f9f mongosh
+
+# List all databases to confirm data is persisted
+test> show dbs
+
+# Switch to the mydb database and find documents in the post collection
+test> use mydb
+db.post.find()
+  { _id: ObjectId('666e36e5393092ac2ba26a13'), post
+
+: 'Hey there' },
+  { _id: ObjectId('666e3714393092ac2ba26a14'), post: 'comment allez vous' },
+  { _id: ObjectId('666e3728393092ac2ba26a15'), post: 'je fait bien,merci' }
+]
+
+# Exit the MongoDB shell
+exit
+
+# List running containers
+docker ps
+# Stop and remove the MongoDB container
+docker stop f9f
+docker rm f9f
+# List all containers
+docker ps -a
+
+Here is a detailed breakdown of the commands with comments explaining each step:
+
+
+# *******************Starting WordPress Container*****************
+
+# List all running Docker containers
+docker ps 
+
+# Run a new WordPress container in detached mode (-d) and map port 8081 on the host to port 80 on the container
+docker run -d -p 8081:80 wordpress
+
+# List all running Docker containers to verify the WordPress container is running
+docker ps
+
+# Open a browser and navigate to http://localhost:8081 to continue with the WordPress configuration
+# Note: This will result in an error because WordPress requires a database connection.
+
+# *********Default Bridge Network and Communication Between Containers***************
+
+# List all running Docker containers
+docker ps
+
+# Stop the WordPress container (replace "fd82" with the actual container ID from the previous docker ps)
+docker stop fd82
+
+# Remove all stopped containers
+docker container prune
+
+# Run a new BusyBox container in interactive mode (-it)
+docker run -it busybox
+
+# Display the IP address of the BusyBox container
+hostname -i
+
+# Ping another container with the IP address 172.17.0.3 from this BusyBox container
+/ # ping 172.17.0.3
+
+# Open a new terminal to run another BusyBox container
+docker run -it busybox
+
+# Display the IP address of the second BusyBox container
+hostname -i
+
+# Ping another container with the IP address 172.17.0.4 from this BusyBox container
+/ # ping 172.17.0.4
+
+# Open a third terminal to inspect container details
+docker ps
+
+# Inspect the details of the container with ID 7b4d (replace with actual ID from docker ps)
+docker inspect 7b4d
+
+# Look for the "Gateway" and "IPAddress" fields in the output to understand the container's network configuration
+"Gateway": "172.17.0.1",
+"IPAddress": "172.17.0.4",
+"IPPrefixLen": 16,
+
+# Inspect the details of another container with ID 23 (replace with actual ID from docker ps)
+docker inspect 23
+
+# Look for the "Gateway" and "IPAddress" fields in the output
+"Gateway": "172.17.0.1",
+"IPAddress": "172.17.0.3",
+"IPPrefixLen": 16,
+
+# Ping an external website to verify internet connectivity
+ping google.com
+
+# ************Exploring Environment Variables*************
+
+# Run a new BusyBox container in interactive mode
+docker run -it busybox
+
+# Display the IP address of the BusyBox container
+/ # hostname -i
+
+# Display the environment variables inside the BusyBox container
+/ # env
+
+# Output will include various environment variables such as HOSTNAME, SHLVL, HOME, TERM, PATH, PWD
+
+# Open another terminal to run an Ubuntu container in interactive mode
+docker run -it ubuntu
+
+# Display the environment variables inside the Ubuntu container
+# env
+
+# Output will include environment variables similar to BusyBox but specific to the Ubuntu container
+
+# Exit the Ubuntu container
+exit
+
+# Display environment variables of a running container with ID 7b4 (replace with actual ID from docker ps)
+docker exec 7b4 env
+
+# ************Starting MySQL Container with env Variable***************
+
+# List all Docker containers, including stopped ones
+docker ps -a
+
+# Remove all stopped containers
+docker container prune
+
+# Attempt to run a MySQL container without specifying necessary environment variables
+docker run mysql
+
+# Error message will indicate that one of the following environment variables must be set:
+# - MYSQL_ROOT_PASSWORD
+# - MYSQL_ALLOW_EMPTY_PASSWORD
+# - MYSQL_RANDOM_ROOT_PASSWORD
+
+# List all running Docker containers
+docker ps 
+
+# Display Docker help documentation
+docker --help
+
+# Run a MySQL container with the required root password environment variable
+docker run -e MYSQL_ROOT_PASSWORD=faraj mysql
+
+# *** Open new terminal ****
+
+# List all running Docker containers to verify the MySQL container is running
+docker ps
+
+# ***Launching Another phpMyAdmin Container***
+
+# Display environment variables of the MySQL container with ID f47e (replace with actual ID from docker ps)
+docker exec f47e env
+
+# Output will include environment variables specific to the MySQL container such as MYSQL_ROOT_PASSWORD, MYSQL_MAJOR, MYSQL_VERSION
+
+# Pull the latest phpMyAdmin image from Docker Hub
+docker pull phpmyadmin/phpmyadmin
+
+# List all Docker images available locally
+docker images
+
+# Run a phpMyAdmin container, mapping port 8080 on the host to port 80 on the container
+docker run -p 8080:80 phpmyadmin/phpmyadmin
+
+# List all running Docker containers to verify the phpMyAdmin container is running
+docker ps
+
+# ** Open a web browser to connect with phpMyAdmin **
+# Navigate to http://localhost:8080
+
+# **Connecting phpMyAdmin to MySQL Container**
+# Specify a MySQL host in the PMA_HOST environment variable when running the phpMyAdmin container
+
+# Run phpMyAdmin container with PMA_HOST environment variable set to the MySQL container's IP address
+docker run --name phpmyadmin -d -e PMA_HOST=dbhost -p 8080:80 phpmyadmin/phpmyadmin
+
+# * Stop the phpMyAdmin container**
+# Use Ctrl+C in the terminal where phpMyAdmin is running
+
+# **Rerun the phpMyAdmin container to recognize the IP address**
+# Inspect the container with ID 693 (replace with actual ID from docker ps) to find its IP address
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 693
+
+# Alternative command to inspect the container and find its IP address
+docker inspect 693
+
+# Example IP address output
+172.17.0.4
+
+# Run phpMyAdmin container with PMA_HOST environment variable set to the correct IP address
+docker run -p 8080:80 -e PMA_HOST=172.17.0.4 phpmyadmin/phpmyadmin
+
+# ** Open a web browser to connect with phpMyAdmin **
+# Navigate to http://localhost:8080
+# Use username "root" and password "faraj"
+
+# **Back to terminal to verify the environment variables set in the phpMyAdmin container**
+docker exec c1 env
+
+# Output will include environment variables such as PATH, HOSTNAME, PMA_HOST
+
+# ***********Making Notes of the Commands*****************
+
+# Run a MySQL container with the root password environment variable set
+docker run -e MYSQL_ROOT_PASSWORD=faraj mysql
+
+# Run a phpMyAdmin container with PMA_HOST environment variable set to the MySQL container's IP address
+docker run -p 8080:80 -e PMA_HOST=172.17.0.4 phpmyadmin/phpmyadmin
+
+# List all running Docker containers
+docker ps 
+
+# Stop specific Docker containers (replace "ec" and "fd" with actual container IDs from docker ps)
+docker stop ec fd
+
+# Remove all stopped containers
+docker container prune
+
+```
+Here is a detailed breakdown of the commands with comments explaining each step:
+
+
+# ****Communication Using Hostnames in the Default Bridge Network*****
+
+# Run a BusyBox container in interactive mode
+docker run -it busybox
+
+# Display the IP address of the BusyBox container
+hostname -i
+# Output: 172.17.0.2
+
+# Display the hostname of the BusyBox container
+hostname
+# Output: ee083bc8c51b
+
+# Exit the BusyBox container
+exit
+
+# Run another BusyBox container with a custom hostname and name
+docker run -it --name busybox1 -h busybox-one busybox
+
+# Display the custom hostname set for the container
+hostname
+# Output: busybox-one
+
+# Display the IP address of the BusyBox container
+hostname -i
+# Output: 172.17.0.2
+
+# **open Second terminal**
+
+# Run a new BusyBox container in interactive mode
+docker run -it busybox
+
+# Display the IP address of the BusyBox container
+hostname -i
+# Output: 172.17.0.3
+
+# Display the hostname of the BusyBox container
+hostname
+# Output: ad2794f970e1
+
+# Attempt to ping the first container by its hostname
+ping ee083bc8c51b
+# Output: ping: bad address 'ee083bc8c51b'
+
+# Exit the BusyBox container
+exit
+
+# Run another BusyBox container with a custom hostname and name
+docker run -it --name busybox2 -h busybox-two busybox
+
+# Display the custom hostname set for the container
+hostname
+# Output: busybox-two
+
+# Display the IP address of the BusyBox container
+hostname -i
+# Output: 172.17.0.3
+
+# Ping the first BusyBox container by its IP address
+ping 172.17.0.2
+
+# Attempt to ping the first BusyBox container by its custom hostname
+ping busybox-one
+# Output: ping: bad address 'busybox-one'
+
+# ** We need to create a custom bridge network **
+
+# **open the third terminal**
+
+# List all running Docker containers
+docker ps
+
+# Inspect the details of the container with ID ad2 (replace with actual ID)
+docker inspect ad2
+
+# Inspect the details of the container with ID docker1 (replace with actual ID)
+docker inspect docker1
+
+# ***Creating New Custom Bridge Network***
+
+# Display help documentation for Docker network commands
+docker network --help
+
+# List all Docker networks
+docker network ls
+# Output:
+# NETWORK ID     NAME      DRIVER    SCOPE
+# c98b047c5033   bridge    bridge    local
+# da965316c311   host      host      local
+# fb815a1202ae   none      null      local
+
+# Inspect the default bridge network
+docker network inspect bridge
+
+# Create a new custom bridge network named 'custom'
+docker network create custom
+
+# Inspect the newly created custom network
+docker network inspect custom
+
+# ****Creating Busybox Containers in the Custom Network*****
+
+# Remove all stopped containers
+docker container prune 
+
+# Display help documentation for Docker run command
+docker run --help
+
+# Run a BusyBox container in the custom network
+docker run -it --network custom busybox
+
+# Display the IP address of the BusyBox container in the custom network
+hostname -i
+# Output: 172.18.0.2
+
+# Ping another container by its IP address in the custom network
+ping 172.18.0.3
+
+# Ping another container by its hostname in the custom network
+ping cb7b85a73cb0
+# Output: it is working
+
+# **open the second terminal**
+
+# Run another BusyBox container in the custom network
+docker run -it --network custom busybox
+
+# Display the IP address of the second BusyBox container in the custom network
+hostname -i
+# Output: 172.18.0.3
+
+# Display the hostname of the second BusyBox container
+hostname
+# Output: cb7b85a73cb0
+
+# **open the third terminal**
+
+# Inspect the details of the custom network
+docker network inspect custom
+
+# ***Using Custom Persistent Names for Connectivity in the Custom Network***
+
+# **first terminal**
+
+# Run a BusyBox container with a custom name in the custom network
+docker run -it --network custom --name busybox1 busybox 
+
+# Ping another container by its custom name in the custom network
+ping busybox2
+# Output: 
+# PING busybox2 (172.18.0.3): 56 data bytes
+# 64 bytes from 172.18.0.3: seq=0 ttl=64 time=0.158 ms
+
+# Exit the BusyBox container
+exit
+
+# **second terminal**
+
+# Run another BusyBox container with a custom name in the custom network
+docker run -it --network custom --name busybox2 busybox 
+
+# Ping another container by its custom name in the custom network
+ping busybox1
+# Output: 
+# PING busybox1 (172.18.0.2): 56 data bytes
+# 64 bytes from 172.18.0.2: seq=0 ttl=64 time=0.923 ms
+
+# Exit the BusyBox container
+exit
+
+# **open the third terminal**
+
+# Inspect the details of the custom network
+docker network inspect custom
+
+# List all running Docker containers
+docker ps
+
+# Inspect the details of the container named 'busybox1'
+docker inspect busybox1
+
+# Remove all stopped containers
+docker container prune
+
+Here are the comments and explanations for each command in your script, which creates and manages MySQL, phpMyAdmin, and WordPress containers within custom Docker networks:
+
+---
+# ***********MySQL and phpMyAdmin in the Custom Network**************
+
+# Create and run MySQL and phpMyAdmin containers in the custom network to allow communication between them
+
+# Change to the specified directory
+cd /home/assulai/Desktop/container
+
+# Create a new directory for MySQL-related files
+mkdir mysal
+
+# Change to the newly created directory
+cd mysal
+
+# Create a new file named command.txt
+vi command.txt
+
+# Example 2: Custom bridge network
+# Create a custom bridge network
+docker network create mysql
+
+# Inspect the newly created network to verify its configuration
+docker network inspect mysql
+
+# Sample output for network configuration
+"Config": [
+                {
+                    "Subnet": "172.19.0.0/16",
+                    "Gateway": "172.19.0.1"
+                }
+]
+
+# Run a MySQL container with the root password environment variable set
+docker run \
+  --network mysql \         # Connect the container to the custom 'mysql' network
+  -e MYSQL_ROOT_PASSWORD=faraj \ # Set the MySQL root password
+  --name mysql \           # Name the container 'mysql'
+  -d mysql                 # Run the container in detached mode using the 'mysql' image
+
+# List running containers to verify that MySQL is running
+docker ps
+
+# Run a phpMyAdmin container with PMA_HOST environment variable set to the MySQL container's name
+docker run \
+  --network mysql \        # Connect the container to the custom 'mysql' network
+  -p 8888:80 \             # Map port 8888 on the host to port 80 in the container
+  -e PMA_HOST=mysql \      # Set phpMyAdmin to connect to the MySQL container
+  -d phpmyadmin/phpmyadmin # Run the container in detached mode using the 'phpmyadmin/phpmyadmin' image
+
+# List running containers to verify that phpMyAdmin is running
+docker ps
+
+# Open a web browser and type localhost:8888 to confirm the connection between MySQL and phpMyAdmin
+
+# ****Challenge: WordPress with MySQL and phpMyAdmin*****
+
+# List running containers
+docker ps 
+
+# Stop the containers with IDs 26 and 37
+docker stop 26 37 
+
+# Remove all stopped containers
+docker container prune
+
+# List all containers to verify the stopped containers are removed
+docker ps -a
+
+# Change to the specified directory
+cd /home/assulai/Desktop/container/
+
+# Create a new directory for WordPress-related files
+mkdir wordpress
+
+# Change to the newly created directory
+cd wordpress
+
+# Create a new file named command.tx
+vi command.tx
+
+# Create a custom bridge network
+docker network create wordpress
+
+# Inspect the newly created network to verify its configuration
+docker network inspect wordpress
+
+# Pull the MySQL 5.7 image from Docker Hub
+docker pull mysql:5.7
+
+# Pull the WordPress 5.4 image from Docker Hub
+docker pull wordpress:5.4
+
+# List the downloaded images to verify
+docker images
+
+# Run a MySQL container with the root password and additional environment variables set
+docker run \
+  --network wordpress \          # Connect the container to the custom 'wordpress' network
+  -e MYSQL_ROOT_PASSWORD=faraj \ # Set the MySQL root password
+  -e MYSQL_DATABASE=wordpress \  # Set the MySQL database name
+  -e MYSQL_USER=wordpress \      # Set the MySQL username
+  -e MYSQL_PASSWORD=wordpress \  # Set the MySQL password
+  --name mysql \                 # Name the container 'mysql'
+  -d mysql:5.7                   # Run the container in detached mode using the 'mysql:5.7' image
+
+# Run a WordPress container with specific port mapping and version
+docker run \
+  --network wordpress \      # Connect the container to the custom 'wordpress' network
+  --name wordpress \         # Name the container 'wordpress'
+  -p 8081:80 \               # Map port 8081 on the host to port 80 in the container
+  -d wordpress:5.4 \         # Run the container in detached mode using the 'wordpress:5.4' image
+
+# List running containers to verify that WordPress is running
+docker ps
+
+# Run a phpMyAdmin container with PMA_HOST environment variable set to the MySQL container's name
+docker run \
+  --network wordpress \      # Connect the container to the custom 'wordpress' network
+  --name phpmyadmin \        # Name the container 'phpmyadmin'
+  -p 8082:80 \               # Map port 8082 on the host to port 80 in the container
+  -e PMA_HOST=mysql \        # Set phpMyAdmin to connect to the MySQL container
+  -d phpmyadmin/phpmyadmin   # Run the container in detached mode using the 'phpmyadmin/phpmyadmin' image
+
+# List running containers to verify that phpMyAdmin is running
+docker ps
+
+# Open a web browser and type localhost:8081 and continue the WordPress installation:
+# - DATABASE=wordpress
+# - USERNAME=wordpress
+# - PASSWORD=wordpress
+# Submit the form and if an error occurs, proceed with the next steps
+
+# Display the logs of the MySQL container to debug any issues
+docker logs mysql
+
+# List running containers
+docker ps 
+
+# Stop the MySQL container
+docker stop mysql
+
+# Remove the MySQL container
+docker rm mysql
+
+# Re-run the command to create the MySQL container with the correct settings
+docker run \
+  --network wordpress \          # Connect the container to the custom 'wordpress' network
+  -e MYSQL_ROOT_PASSWORD=faraj \ # Set the MySQL root password
+  -e MYSQL_DATABASE=wordpress \  # Set the MySQL database name
+  -e MYSQL_USER=wordpress \      # Set the MySQL username
+  -e MYSQL_PASSWORD=wordpress \  # Set the MySQL password
+  --name mysql \                 # Name the container 'mysql'
+  -d mysql:5.7                   # Run the container in detached mode using the 'mysql:5.7' image
+
+# Open a web browser and type localhost:8081 and continue the WordPress installation:
+# - DATABASE=wordpress
+# - USERNAME=wordpress
+# - PASSWORD=wordpress
+# Submit the form and run the installation
+# Continue to fill in the information and you should be able to log in to the WordPress page.
+
+# Open a web browser and type localhost:8082:
+# - Username=wordpress
+# - Password=wordpress
+
+# List running containers
+docker ps
+
+# Stop the MySQL, WordPress, and phpMyAdmin containers
+docker stop mysql wordpress phpmyadmin
+
+# Remove all stopped containers
+docker container prune
+```
+Certainly! Here are the commented lines of the commands with explanations:
+
+---
+# Pull the Docker image for the curl utility
+docker pull appropriate/curl
+
+# Run a container from the pulled curl image
+docker run -it appropriate/curl
+
+# This runs curl inside the container; the error message suggests that you need to use curl with appropriate options
+curl: try 'curl --help' or 'curl --manual' for more information
+
+# Display the history of the docker image layers
+docker history appropriate/curl
+
+# Attempt to use curl to access google.com inside the container
+docker run -it appropriate/curl google.com
+
+# Run the curl container with an interactive shell
+docker run -it appropriate/curl sh
+
+# Inside the container, check the help menu of curl
+/ # curl --help
+
+# Attempt to use curl to access Google (note the typo in 'wwww')
+/ # curl wwww.google.com
+exit
+
+# Create a new directory for elasticsearch
+mkdir elasticsearch 
+
+# Change directory to the newly created elasticsearch directory
+cd elasticsearch
+
+# Open a new file named commands.txt in the vi editor
+vi commands.txt
+
+# Create a new Docker network named elasticsearch
+docker network create elasticsearch
+
+# Command to run the Elasticsearch container in the created network
+docker run \
+--network elasticsearch \    # Use the elasticsearch network
+--name elasticsearch \       # Name the container 'elasticsearch'
+-e "discovery.type=single-node" \  # Environment variable to run Elasticsearch in single-node mode
+-p 9200:9200 \               # Map port 9200 on the host to port 9200 on the container
+elasticsearch:7.6.2          # Use the Elasticsearch image version 7.6.2
+
+# Command to run the curl container in the created network
+docker run \
+    -it \                   # Run the container in interactive mode with a terminal
+    --network elasticsearch \  # Use the elasticsearch network
+    --name curl \           # Name the container 'curl'
+    appropriate/curl sh     # Use the appropriate/curl image and start a shell session
+
+# List all running containers
+docker ps 
+
+# Open a browser and navigate to http://localhost:9200/ to verify Elasticsearch is running
+
+# Inside the curl container, ping the Elasticsearch container to check connectivity
+ping elasticsearch 
+/ # ping elasticsearch
+PING elasticsearch (172.21.0.2): 56 data bytes
+64 bytes from 172.21.0.2: seq=0 ttl=64 time=0.371 ms
+
+# Change directory to elasticsearch
+cd elasticsearch 
+
+# Create a new file named elasticsearch (probably intended to be a script or config file)
+touch elasticsearch
+
+# Open terminal that runs curl container and execute the following commands
+
+# CREATE INDEX in Elasticsearch
+curl -XPUT http://elasticsearch:9200/my-index
+
+# List indices to verify the creation
+curl -XGET http://elasticsearch:9200/_cat/indices?v
+
+# INSERT DOCUMENTS INTO THE INDEX
+curl -XPOST http://elasticsearch:9200/my-index/cities/1 \
+    -H 'Content-Type: application/json' \  # Specify content type as JSON
+    -d '{"city":"New York"}'               # Data payload
+
+curl -XPOST http://elasticsearch:9200/my-index/cities/2 \
+    -H 'Content-Type: application/json' \
+    -d '{"city":"Paris"}'
+
+curl -XPOST http://elasticsearch:9200/my-index/cities/3 \
+    -H 'Content-Type: application/json' \
+    -d '{"city":"London"}'
+
+# READ FIELDS MAPPING FOR THE INDEX
+curl -XGET http://elasticsearch:9200/my-index/_mapping?pretty
+
+# GET DOCUMENT BY ID
+curl -XGET http://elasticsearch:9200/my-index/cities/1?pretty
+
+# SEARCH ALL DOCUMENTS
+curl -XGET http://elasticsearch:9200/my-index/_search?pretty
+
+# SEARCH USING QUERY PARAMETER
+curl -XGET http://elasticsearch:9200/my-index/_search?q=city:new
+exit
+exit
+
+# Run a Redis container
+docker run redis
+
+# Open a second terminal
+
+# List all running containers
+docker ps
+
+# Access the Redis CLI inside the running Redis container
+docker exec -it dae redis-cli
+
+# Test the Redis server connection with a ping command
+127.0.0.1:6379> ping
+PONG
+
+# Get server information
+127.0.0.1:6379>info
+
+# Set a key in Redis
+127.0.0.1:6379>SET key1 "Hey there"
+
+# Get the value of the key
+127.0.0.1:6379> get key1
+"Hey there"
+
+# Create a directory for Redis setup
+cd /home/assulai/Desktop/containers/docker/containers
+mkdir redis
+cd redis 
+
+# Create a new file named commands.txt
+touch commands.txt
+
+## CREATE NEW CUSTOM NETWORK for Redis
+docker network create redis
+
+## LAUNCH REDIS CONTAINER in the custom network
+docker run \
+    --name redis \       # Name the container 'redis'
+    --network redis \    # Use the custom 'redis' network
+    -d redis             # Run the Redis image in detached mode
+
+## LAUNCH REDIS-COMMANDER CONTAINER
+docker run \
+    --name redis-commander \  # Name the container 'redis-commander'
+    --network redis \         # Use the custom 'redis' network
+    -p 8081:8081 \            # Map port 8081 on the host to port 8081 on the container
+    -e REDIS_HOST=redis \     # Set environment variable to connect to Redis container
+    -d rediscommander/redis-commander  # Run the Redis Commander image in detached mode
+
+# List all running containers
+docker ps
+
+# Open a browser and navigate to localhost:8081 to access Redis Commander
+
+# In Redis Commander, click on local(redis 6379:0), add a new key with the name 'key', type 'good day', and save it
+
+# Back to the terminal
+
+# List all running containers
+docker ps
+
+# Stop specific containers by their IDs (ca, da, 143 are placeholders for actual container IDs)
+docker stop ca da 143
+
+# Remove all stopped containers
+docker container prune
+
+# LAUNCHING HTTPD CONTAINER
+# Run an HTTPD (Apache) container
+docker run -p 8080:80 -d httpd
+
+# List all running containers
+docker ps
+
+# Open a browser and navigate to localhost:8080 to verify HTTPD is running
+
+# Stop the HTTPD container (43 is a placeholder for the actual container ID)
+docker stop 43
+
+# Remove all stopped containers
+docker container prune
+
+# List all containers, including stopped ones
+docker ps -a
+```
+### Docker Client
+Think of the Docker client as the person who gives instructions. This person tells the LEGO factory what to build and how to build it.
+
+### Docker Server
+The Docker server is like the LEGO factory. It receives instructions from the Docker client and does the actual work of building the LEGO models.
+
+###Docker Host
+The Docker host is like the table or play area where you build and keep all your LEGO models. It's the physical place where the Docker server (the LEGO factory) lives and where all the Docker containers (finished LEGO models) are built and run.
+
+### Docker Image
+A Docker image is like the blueprint for a LEGO model. It has all the instructions and parts lists needed to build a specific LEGO creation. You can't play with the blueprint directly, but you need it to build the actual model.
+
+### Docker Container
+A Docker container is like the finished LEGO model that you can play with. It's built from the blueprint (Docker image) and is the final, working creation.
+
+### Docker Repository
+A Docker repository is like a big storage room where all the LEGO blueprints (Docker images) are kept. You can go to this storage room to find the blueprints you need.
+
+### Docker Registry
+A Docker registry is like a giant library of storage rooms. It's an online place where many people can store and share their LEGO blueprints (Docker images). You can think of it as a huge collection of repositories that you can access from anywhere.
+
+So, in summary:
+
+Docker Client: The person giving instructions.(cmd)
+Docker Server: The LEGO factory building the models.
+Docker Host: The table or play area where all the LEGO building happens and where the LEGO factory is located.
+Docker Image: The blueprint for a LEGO model.
+Docker Container: The finished LEGO model you can play with.
+Docker Repository: The storage room for LEGO blueprints.
+Docker Registry: The big library where many storage rooms (repositories) are kept.
+
+the command `docker run -it --rm --privileged --pid=host justincormack/nsenter1` step by step, 
+
+### `docker run`
+This is like telling the LEGO factory to start building a new model. You're saying, "Hey, Docker, I want to start a new container."
+
+### `-it`
+These are two options combined:
+- `-i` stands for "interactive." This means you want to be able to interact with the container, like talking to someone while they build the LEGO model.
+- `-t` stands for "tty," which is a way to say you want a terminal, like a special screen where you can type commands and see responses.
+
+### `--rm`
+This option means "remove." It tells Docker to clean up the container and remove it completely after you're done playing with it, like putting away the LEGO model when you're finished so it doesn't clutter up your play area.
+
+### `--privileged`
+This gives the container extra powers and permissions, like giving someone special access to all the LEGO parts in the factory, even the ones that are usually off-limits.
+
+### `--pid=host`
+PID stands for "process ID," which is a way computers keep track of different tasks. This option tells the container to share the same task list as the host computer (the table where you're building LEGO models). It's like saying, "Let me see and interact with everything happening on the whole play table, not just in my little section."
+
+### `justincormack/nsenter1`
+This is the name of the Docker image you're using. It's like picking a specific LEGO blueprint to build. In this case, the blueprint is for a tool called `nsenter1` created by someone named Justin Cormack. This tool is useful for looking inside and interacting with different parts of the host computer.
+
+### Putting It All Together
+So, the whole command `docker run -it --rm --privileged --pid=host justincormack/nsenter1` means:
+- Start a new container (build a new LEGO model).
+- Let me interact with it directly (give me a special screen to type commands).
+- Clean up and remove the container when I'm done (put the LEGO model away when finished).
+- Give the container special access to everything (extra permissions).
+- Share the same task list as the host computer (see and interact with all tasks on the table).
+- Use the `nsenter1` tool blueprint from Justin Cormack to do this.
+**************Docker Commands Versus Management Commands*******************
+docker 
+there are two type when you run docker" commands and management commands"
+Sure! Let's go over some basic `docker` commands and management commands, explained in a way a 10-year-old might understand. We'll think of Docker as our LEGO factory where we build and manage LEGO models (containers).
+
+### Basic Docker Commands
+
+1. **docker run**
+   - **Explanation**: Start a new LEGO model (container) based on a specific blueprint (image).
+   - **Example**: `docker run hello-world`
+     - This tells Docker to build and run a LEGO model called "hello-world."
+
+2. **docker ps**
+   - **Explanation**: Show a list of all the LEGO models (containers) currently being built or played with.
+   - **Example**: `docker ps`
+     - This lists all running containers.
+
+3. **docker pull**
+   - **Explanation**: Get a new LEGO blueprint (image) from the big library (Docker registry).
+   - **Example**: `docker pull ubuntu`
+     - This downloads the Ubuntu image from the Docker registry.
+
+4. **docker stop**
+   - **Explanation**: Tell the LEGO factory to stop building or playing with a specific LEGO model (container).
+   - **Example**: `docker stop container_id`
+     - This stops the container with the specified ID.
+
+5. **docker rm**
+   - **Explanation**: Remove a stopped LEGO model (container) completely from the play area.
+   - **Example**: `docker rm container_id`
+     - This removes the container with the specified ID.
+
+6. **docker rmi**
+   - **Explanation**: Remove a LEGO blueprint (image) that you don't need anymore.
+   - **Example**: `docker rmi image_id`
+     - This removes the image with the specified ID.
+7. **docker kill**
+	Explanation: Forcefully stop a running container immediately.
+	Example: docker kill container_id
+	This forcefully stops the container with the specified ID.
+
+### Docker Management Commands
+
+1. **docker images**
+   - **Explanation**: Show a list of all LEGO blueprints (images) you have in your storage room.
+   - **Example**: `docker images`
+     - This lists all the images available on your Docker host.
+
+2. **docker network**
+   - **Explanation**: Manage the roads (networks) that connect different LEGO models (containers).
+   - **Example**: `docker network ls`
+     - This lists all the networks.
+
+3. **docker volume**
+   - **Explanation**: Manage the storage boxes (volumes) where you keep parts and accessories for your LEGO models (data storage).
+   - **Example**: `docker volume ls`
+     - This lists all the volumes.
+
+4. **docker inspect**
+   - **Explanation**: Look inside a LEGO model (container) or blueprint (image) to see all the details about it.
+   - **Example**: `docker inspect container_id`
+     - This shows detailed information about the specified container.
+
+5. **docker logs**
+   - **Explanation**: Read the activity logbook for a specific LEGO model (container) to see what has been happening.
+   - **Example**: `docker logs container_id`
+     - This shows the logs for the specified container.
+
+6. **docker exec**
+   - **Explanation**: Run a command inside an already built and running LEGO model (container), like asking a worker inside to do something specific.
+   - **Example**: `docker exec -it container_id bash`
+     - This opens a terminal inside the specified running container.
+
+### Putting It All Together
+
+Here's how you might use these commands:
+
+- **Starting a new container**: `docker run -it ubuntu`
+  - This starts a new interactive Ubuntu container.
+
+- **Listing running containers**: `docker ps`
+  - This shows you all the containers currently running.
+
+- **Stopping a container**: `docker stop container_id`
+  - This stops a running container.
+
+- **Removing a container**: `docker rm container_id`
+  - This removes a stopped container.
+
+- **Checking container details**: `docker inspect container_id`
+  - This shows you all the details about a container.
+
+******Alternative docker Commands*******
+
+Sure! Here are some alternative Docker commands, explained in a way a 10-year-old might understand, using our LEGO factory analogy. These alternatives provide similar functionality to the basic commands but may offer additional options or be more suitable in different scenarios.
+
+### Alternative Docker Commands
+
+1. **docker container run**
+   - **Explanation**: This is a more specific command for starting a new LEGO model (container) using a blueprint (image).
+   - **Example**: `docker container run hello-world`
+     - This starts a new container just like `docker run`.
+
+2. **docker container ls**
+   - **Explanation**: This is another way to show the list of all the LEGO models (containers) currently being built or played with.
+   - **Example**: `docker container ls`
+     - This lists all running containers, similar to `docker ps`.
+
+3. **docker container stop**
+   - **Explanation**: This command tells the LEGO factory to stop building or playing with a specific LEGO model (container).
+   - **Example**: `docker container stop container_id`
+     - This stops the specified container.
+
+4. **docker container rm**
+   - **Explanation**: This removes a stopped LEGO model (container) completely from the play area.
+   - **Example**: `docker container rm container_id`
+     - This removes the specified container.
+
+5. **docker image pull**
+   - **Explanation**: This is a specific command for getting a new LEGO blueprint (image) from the big library (Docker registry).
+   - **Example**: `docker image pull ubuntu`
+     - This downloads the Ubuntu image.
+
+6. **docker image rm**
+   - **Explanation**: This removes a LEGO blueprint (image) that you don't need anymore.
+   - **Example**: `docker image rm image_id`
+     - This removes the specified image.
+
+7. **docker container inspect**
+   - **Explanation**: This looks inside a LEGO model (container) to see all the details about it.
+   - **Example**: `docker container inspect container_id`
+     - This shows detailed information about the specified container.
+
+8. **docker image inspect**
+   - **Explanation**: This looks inside a LEGO blueprint (image) to see all the details about it.
+   - **Example**: `docker image inspect image_id`
+     - This shows detailed information about the specified image.
+
+9. **docker container logs**
+   - **Explanation**: This reads the activity logbook for a specific LEGO model (container) to see what has been happening.
+   - **Example**: `docker container logs container_id`
+     - This shows the logs for the specified container.
+
+10. **docker container exec**
+    - **Explanation**: This runs a command inside an already built and running LEGO model (container), like asking a worker inside to do something specific.
+    - **Example**: `docker container exec -it container_id bash`
+      - This opens a terminal inside the specified running container.
+11. **docker build`**
+	 - **Explanation**: `docker build` is used to build a Docker image from a Dockerfile, which is like a set 	of  instructions for creating a LEGO blueprint.
+	- **Example**: docker build -t my_image .
+	- This command tells Docker to build an image (`-t` tags it with a name `my_image`) from the Dockerfile (`.	` means current directory).
+
+**Summary**: `docker build` turns a Dockerfile into a blueprint (image) that you can use to create containers.
+
+### Docker Management Commands with `docker container` and `docker image`
+
+1. **docker container start**
+   - **Explanation**: Start a stopped LEGO model (container) again.
+   - **Example**: `docker container start container_id`
+     - This starts the specified stopped container.
+
+2. **docker container restart**
+   - **Explanation**: Stop and then start a LEGO model (container) again.
+   - **Example**: `docker container restart container_id`
+     - This restarts the specified container.
+
+3. **docker image ls**
+   - **Explanation**: Show a list of all LEGO blueprints (images) you have in your storage room.
+   - **Example**: `docker image ls`
+     - This lists all the images available on your Docker host.
+
+### Additional Useful Commands
+
+1. **docker stats**
+   - **Explanation**: Show real-time statistics for running LEGO models (containers), like how many pieces are being used.
+   - **Example**: `docker stats`
+     - This shows the resource usage statistics for running containers.
+
+2. **docker system prune**
+   - **Explanation**: Clean up your play area by removing all stopped containers, unused networks, and dangling images.
+   - **Example**: `docker system prune`
+     - This removes all unused data to free up space.
+
+3. **docker compose**
+   - **Explanation**: Manage multiple LEGO models (containers) at once using a special set of instructions.
+   - **Example**: `docker compose up`
+     - This starts up all the containers defined in a `docker-compose.yml` file.
+
+4.**docker commit**
+    - **Explanation**: The `docker commit` command saves the current state of a container as a new image. It's     	- like taking a snapshot of your LEGO model to create a new blueprint. This lets you replicate the exact 	setup later.
+	**Example**:docker commit abc123 my_custom_image
+	This creates a new image called `my_custom_image` from the container with ID `abc123`.
+
+
+********************Cleaning Up My Docker Setup****************
+docker ps -a 
+docker container prune
+docker images
+docker image --help 
+docker image prune --help
+docker image prune -a
+docker images
+
+***********Pulling Images from Docker Hub*******************
+docker pull hello-world
+docker images 
+docker image pull busybox
+docker images
+
+************Creating New Container from the Image***************
+docker run hello-world
+docker ps -a
+
+*****************What is CMD in the Docker Image****************
+docker ps -a
+docker inspect 3d
+"Cmd": [
+                "/hello" ],
+
+**************Getting Unsplash API Key****************
+cd /home/assulai/Desktop
+git clone https://github.com/PacktPublishing/docker
+create account on unsplash.com
+open new tab and type the following: https://unsplash.com/oauth/applications-> create new application -->
+check all :
+The API is to be used for non-automated, high-quality, and authentic experiences.
+More info & examples ↗
+ You cannot replicate the core user experience of Unsplash (unofficial clients, wallpaper applications, etc.).
+More info & examples ↗
+Your Access Key and Secret Key must remain confidential.
+Do not abuse the API. Too many requests too quickly will get your access turned off.
+----> accept terms->application name = images gallery, description=images gallery ---> create application
+copy access key = bJ7s59PT7rWRI5bLA8_ubenONUDOP_QUjifDwisEsx4 
+
+mkdir images-gallery 
+cd images-gallery
+mkdir api
+cd api
+vi .env.local
+UNSPLASH_KEY=bJ7s59PT7rWRI5bLA8_ubenONUDOP_QUjifDwisEsx4
+
+***********To install Node.js and npm on a Red Hat-based system, such as RHEL or CentOS, follow these steps:
+
+### Step 1: Enable NodeSource Repository
+
+1. **Add the NodeSource repository**:
+
+   First, you need to add the NodeSource repository, which provides the latest version of Node.js.
+
+   
+   curl -fsSL https://rpm.nodesource.com/setup_16.x | sudo bash -
+ 
+
+   This command downloads and runs a script that configures your system to use the NodeSource repository for Node.js 16.x.
+
+### Step 2: Install Node.js and npm
+
+1. **Install Node.js and npm**:
+
+   After setting up the repository, install Node.js and npm using the `dnf` or `yum` package manager.
+
+   
+   sudo dnf install -y nodejs
+ 
+
+   or, if you are using a version of RHEL/CentOS that uses `yum`:
+
+   
+   sudo yum install -y nodejs
+ 
+
+### Step 3: Verify the Installation
+
+1. **Check the versions of Node.js and npm**:
+
+   After installation, verify that Node.js and npm are installed correctly by checking their versions.
+
+   
+   node -v
+   npm -v
+ 
+
+   You should see the version numbers of Node.js and npm displayed, confirming the successful installation.
+
+### Additional: Using nvm (Node Version Manager)
+
+If you prefer to use `nvm` (Node Version Manager) to manage multiple versions of Node.js, follow these steps:
+
+1. **Install nvm**:
+
+   
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+ 
+
+2. **Load nvm**:
+
+   Add the following lines to your `~/.bashrc`, `~/.bash_profile`, or `~/.zshrc` file to load `nvm` automatically:
+
+   
+   export NVM_DIR="$HOME/.nvm"
+   [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+ 
+
+   Then, source your profile:
+
+   
+   source ~/.bashrc
+ 
+
+3. **Install Node.js using nvm**:
+
+   Install the desired version of Node.js:
+
+   
+   nvm install 16
+ 
+
+   Use the installed version:
+
+   
+   nvm use 16
+ 
+
+4. **Verify the installation**:
+
+   
+   node -v
+   npm -v
+ 
+====================
+Given the issues with the package repositories, we'll focus on a more manual approach for installing the necessary tools. Let's start by downloading and installing Python, pip, and Pipenv directly.
+
+### Step 1: Install Python from Source
+
+1. **Install Dependencies**:
+
+   First, you need to install some dependencies required to build Python from source:
+
+   
+   sudo dnf install gcc openssl-devel bzip2-devel libffi-devel
+ 
+
+2. **Download Python Source Code**:
+
+   Navigate to the `/usr/src` directory and download the latest Python source code (change the version number if needed):
+
+   
+   cd /usr/src
+   sudo wget https://www.python.org/ftp/python/3.9.13/Python-3.9.13.tgz
+ 
+
+3. **Extract the Downloaded Package**:
+
+   
+   sudo tar xzf Python-3.9.13.tgz
+ 
+
+4. **Compile and Install Python**:
+
+   
+   cd Python-3.9.13
+   sudo ./configure --enable-optimizations
+   sudo make altinstall
+ 
+
+   **Note**: The `altinstall` command avoids overwriting the system's default Python version.
+
+### Step 2: Install pip
+
+1. **Download `get-pip.py`**:
+
+   
+   curl -O https://bootstrap.pypa.io/get-pip.py
+ 
+
+2. **Install pip Using Python 3**:
+
+   
+   sudo python3.9 get-pip.py
+ 
+
+### Step 3: Install Pipenv
+
+1. **Install Pipenv Using pip**:
+
+   
+   pip3.9 install --user pipenv
+ 
+
+2. **Add Pipenv to Your PATH**:
+
+   Add the following line to your `~/.bashrc`, `~/.bash_profile`, or `~/.zshrc` file:
+
+   
+   export PATH=$PATH:~/.local/bin
+ 
+
+3. **Source Your Profile to Apply the Changes**:
+
+   
+   source ~/.bashrc
+ 
+
+### Step 4: Verify the Installations
+
+1. **Check Python Version**:
+
+   
+   python3.9 --version
+ 
+
+2. **Check pip Version**:
+
+   
+   pip3.9 --version
+ 
+
+3. **Check Pipenv Version**:
+
+   
+   pipenv --version
+ 
+===
+Sure, I will add comments to each line of the commands and explain what each step does. Here is the annotated script:
+
+### Starting Frontend App Using NPM
+
+cd /home/assulai/Desktop/images-gallery/frontend    # Change directory to the frontend part of the images gallery project
+ls                                                 # List the files in the current directory to confirm the directory change
+npm install                                        # Install the necessary npm packages as specified in the package.json file
+ls                                                 # List the files again to confirm the installation of node_modules
+ls node_module                                     # List the contents of the node_modules directory to check the installed packages
+npm start                                          # Start the frontend application using npm
+# Open the browser and type "http://localhost:3000" to view the running frontend application
+```
+
+### Starting API Application Using Python
+
+# Keep the frontend application running and open a new terminal
+cd /home/assulai/Desktop/images-gallery/api         # Change directory to the API part of the images gallery project
+mkdir .venv                                         # Create a new directory named .venv for the virtual environment
+ls -la                                              # List all files in the directory including hidden files to confirm the creation of .venv
+pipenv install                                      # Install pipenv, which will create a Pipfile and Pipfile.lock
+pipenv install flask                                # Install Flask using pipenv, adding it to the Pipfile
+pipenv shell                                        # Activate the virtual environment created by pipenv
+pipenv install --dev                                # Install development dependencies as specified in the Pipfile
+python main.py                                      # Run the main Python script to start the API application
+# Open the browser and type "http://localhost:5050" to view the running API application (it might display "page not found" if the endpoint isn't configured)
+```
+
+### Verifying How Images Gallery Project Works
+
+# On the browser, go to the images gallery frontend and perform a search for "sun", "flower", or "water"
+# The following lines show the expected log output in the terminal running the API
+127.0.0.1 - - [19/Jun/2024 11:05:30] "GET /new-image?query=sun HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jun/2024 11:07:11] "GET /new-image?query=flower HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jun/2024 11:09:48] "GET /new-image?query=water HTTP/1.1" 200 -
+```
+
+### Initializing Git/GitHub for Project
+
+git init                                           # Initialize a new Git repository in the current directory
+git add .                                          # Add all files in the current directory to the staging area
+git commit                                         # Commit the staged files to the repository (opens the default text editor for commit message)
+git remote add origin https://github.com/Assulai/images-gallery.git  # Add a remote repository with the given URL
+git branch -M main                                 # Rename the default branch to 'main'
+git push -u origin main                            # Push the committed changes to the remote repository and set the upstream branch to 'main'
+```
+
+### Repeating Steps to Start Frontend and API Applications
+
+# Repeat the steps to start the frontend application
+cd /home/assulai/Desktop/images-gallery/frontend    # Change directory to the frontend part of the images gallery project
+ls                                                 # List the files in the current directory to confirm the directory change
+npm install                                        # Install the necessary npm packages as specified in the package.json file
+ls                                                 # List the files again to confirm the installation of node_modules
+ls node_module                                     # List the contents of the node_modules directory to check the installed packages
+npm start                                          # Start the frontend application using npm
+# Open the browser and type "http://localhost:3000" to view the running frontend application
+
+# Repeat the steps to start the API application
+# Keep the frontend application running and open a new terminal
+cd /home/assulai/Desktop/images-gallery/api         # Change directory to the API part of the images gallery project
+mkdir .venv                                         # Create a new directory named .venv for the virtual environment
+ls -la                                              # List all files in the directory including hidden files to confirm the creation of .venv
+pipenv install                                      # Install pipenv, which will create a Pipfile and Pipfile.lock
+pipenv install flask                                # Install Flask using pipenv, adding it to the Pipfile
+pipenv shell                                        # Activate the virtual environment created by pipenv
+pipenv install --dev                                # Install development dependencies as specified in the Pipfile
+python main.py                                      # Run the main Python script to start the API application
+# Open the browser and type "http://localhost:5050" to view the running API application (it might display "page not found" if the endpoint isn't configured)
+```
+
+### Verifying How Images Gallery Project Works (Again)
+
+# On the browser, go to the images gallery frontend and perform a search for "sun", "flower", or "water"
+# The following lines show the expected log output in the terminal running the API
+127.0.0.1 - - [19/Jun/2024 11:05:30] "GET /new-image?query=sun HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jun/2024 11:07:11] "GET /new-image?query=flower HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jun/2024 11:09:48] "GET /new-image?query=water HTTP/1.1" 200 -
+```
+
+### Creating Dockerfile for the Python API Service
+vi Dockerfile
+====
+# Use the official Python image as the base image
+FROM python:3.9
+
+# Set the working directory in the container
+WORKDIR /app
+
+COPY . /app
+
+# Copy Pipfile and Pipfile.lock to the container
+COPY Pipfile Pipfile.lock /app/
+
+RUN pip install pipenv
+RUN pip install --upgrade pip
+
+RUN pip install -r requirements.txt
+
+
+# Copy the current directory contents into the container at /app
+COPY . /app
+
+# Make port 5050 available to the world outside this container
+EXPOSE 5050
+
+# Run main.py when the container launches
+CMD ["python", "main.py"]
+====
+
+*******************Building Docker Image for the API Service**********************
+cd /home/assulai/Desktop/images-gallery/api
+docker build .
+===
+If `pipenv lock -r > requirements.txt` is not working, we'll manually create the `requirements.txt` file from your `Pipfile.lock`. Here’s how to do it:
+
+### Steps to Manually Create `requirements.txt`
+
+1. **Extract Dependencies from `Pipfile.lock`**:
+   - Open your `Pipfile.lock` file.
+   - Identify the dependencies listed under the `[packages]` and `[dev-packages]` sections.
+
+2. **Format Dependencies**:
+   - Format the dependencies into `package==version` format.
+
+3. **Create `requirements.txt`**:
+   - Manually create a `requirements.txt` file with these formatted dependencies.
+
+### Example `Pipfile.lock`
+
+Suppose your `Pipfile.lock` looks like this:
+
+```json
+{
+    "_meta": {
+        "hash": {
+            "sha256": "abc123..."
+        },
+        "pipfile-spec": 6,
+        "requires": {
+            "python_version": "3.9"
+        }
+    },
+    "default": {
+        "Flask": {
+            "version": "==2.0.1"
+        },
+        "requests": {
+            "version": "==2.26.0"
+        }
+    },
+    "develop": {
+        "black": {
+            "version": "==20.8b1"
+
+        },
+        "pylint": {
+            "version": "==2.7.2"
+        }
+    }
+}
+```
+### Steps to Create a Docker Image for Your Flask Application
+
+#### 1. Manually Creating `requirements.txt`
+Create a new file named `requirements.txt` and add the following content based on the `Pipfile.lock`:
+
+---
+vi requirements.txt
+```
+
+Add the following lines to `requirements.txt`:
+```txt
+Flask==2.0.1
+requests==2.26.0
+black==20.8b1
+pylint==2.7.2
+```
+
+#### 2. Build Docker Image
+Use the following command to build the Docker image. This command will read the Dockerfile in the current directory and create a new Docker image tagged `images-gallery-api`.
+
+---
+docker build . -t images-gallery-api
+```
+
+#### 3. List Docker Images
+After building, list all Docker images to verify that your image has been created successfully.
+
+---
+docker images
+```
+
+### Running API Containers Based on the Built Docker Image
+
+#### 1. Start Frontend Service
+Navigate to the frontend directory and start the frontend service using npm.
+
+---
+cd /home/assulai/Desktop/containers/images-gallery/frontend
+npm start
+```
+
+#### 2. Run API Container
+Open a new terminal and navigate to the API directory. Run the Docker container with the API service.
+
+---
+cd /home/assulai/Desktop/containers/images-gallery/api
+docker run -p 5050:5050 images-gallery-api
+```
+
+#### 3. Access the API
+Open your browser and type `localhost:5050` to access the API.
+
+#### 4. Run Another API Container
+Open a new terminal and run another instance of the API container on a different port.
+
+---
+docker run -p 5051:5050 images-gallery-api
+```
+
+#### 5. Access the Second API Instance
+Open your browser and type `localhost:5051` to access the second instance of the API.
+
+
+### Analyzing API Docker Container from Inside
+
+1. **List running Docker containers:**
+  
+   docker ps
+ 
+
+2. **Access the Docker container:**
+  
+   docker exec -it naughty_nightingale bash
+ 
+
+3. **Inside the container, list the contents of the current directory:**
+  
+   ls
+ 
+
+4. **List all files in the current directory with detailed information:**
+  
+   ls -la
+ 
+
+5. **Check the Python version:**
+  
+   python --version
+ 
+
+6. **Check the pip version:**
+  
+   pip --version
+ 
+
+7. **Check the Flask version:**
+  
+   flask --version
+ 
+
+8. **Check the dotenv version (if applicable):**
+  
+   dotenv --version
+ 
+
+9. **List all processes running in the container:**
+  
+   ps -x
+ 
+
+10. **Exit the container:**
+   
+    exit
+  
+
+### Creating Dockerfile for the Frontend Application
+
+cd /home/assulai/Desktop/containers/images-gallery/frontend
+
+vi dockerfile
+# Use an official node image as a base image
+FROM node:22.3.0-alpine:3.20
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Expose port 80 to the outside world
+EXPOSE 3000
+
+# Copy package.json and package-lock.json to the working directory
+COPY package.json package-lock.json ./
+
+# Install dependencies
+RUN npm install --silent
+
+# Copy the rest of the application files to the working directory
+COPY . ./
+
+# Build the application
+#RUN npm run build
+
+# Use a minimal web server to serve the static files
+#FROM nginx:alpine
+
+# Copy the build output to the web server's directory
+#COPY --from=0 /app/build /usr/share/nginx/html
+
+
+# Start the web server
+CMD ["npm", "start"]
+```
+
+### Explanation
+
+- **FROM node:15**: This sets the base image to Node.js version 15.
+- **WORKDIR /app**: This sets the working directory inside the container to `/app`.
+- **COPY package.json ./ & COPY package-lock.json ./**: These commands copy `package.json` and `package-lock.json` to the working directory.
+- **RUN npm install**: This installs the dependencies specified in `package.json`.
+- **COPY . .**: This copies the rest of the application files to the working directory.
+- **RUN npm run build**: This builds the application.
+- **FROM nginx:alpine**: This sets the base image to a minimal version of Nginx.
+- **COPY --from=0 /app/build /usr/share/nginx/html**: This copies the build output from the first stage to the Nginx web server directory.
+- **EXPOSE 80**: This exposes port 80 so the container can be accessed via this port.
+- **CMD ["npm", "start"]**: This starts the Nginx web server.
+
+### Building and Running the Docker Container
+
+
+# Move the node_modules directory to a specified location.
+mv node_modules /home/assulai/Desktop/containers/
+
+# List the contents of the current directory to verify the move.
+ls
+
+# Build the Docker image from the Dockerfile in the current directory
+# and tag the image as "images-gallery-frontend".
+docker build . -t images-gallery-frontend
+
+# List all Docker images to verify that the image was built successfully.
+docker images
+
+# Running Docker Container for the Frontend Service
+# List all Docker images to ensure the "images-gallery-frontend" image is available.
+docker images
+
+# Run a Docker container from the "images-gallery-frontend" image,
+# mapping port 3000 of the host to port 3000 of the container.
+docker run -p 3000:3000 images-gallery-frontend
+
+# Open the browser and navigate to "localhost:3000" to access the frontend service.
+# You can now search for images on the image gallery.
+
+# Open a new terminal to check running containers.
+docker ps
+
+# Exploring Frontend Container from Inside
+# Get an interactive shell inside the running container named "confident_base".
+docker exec -it confident_base sh
+
+# Inside the container, list the contents of the /app directory.
+ls /app
+
+# Change to the parent directory.
+cd ..
+
+# List the contents of the root directory.
+ls /
+
+# Change back to the /app directory.
+cd app
+
+# List the contents of the /app directory again.
+ls /app
+
+# Display currently running processes inside the container.
+ps
+
+# Why You Need to Have the node_modules Folder and Python venv Folders Locally
+ Having the node_modules folder for Node.js projects and the venv folder for Python projects locally is crucial for maintaining a consistent, isolated, and reproducible development environment.These folders ensure that all necessary dependencies are available,provide an isolated space to avoid conflicts, and allow for offline development and improved performance.
+
+# Running Both Frontend and API Containers in Background
+# Stop both the API and frontend containers by pressing ctrl+c.
+# List running containers to ensure they are stopped.
+docker ps
+
+# Run the API container in detached mode (-d) and map port 5050 of the host to port 5050 of the container.
+docker run -p 5050:5050 -d images-gallery-api
+
+# Run the frontend container in detached mode (-d) and map port 3000 of the host to port 3000 of the container.
+docker run -p 3000:3000 -d images-gallery-frontend
+
+# List running containers to verify that both containers are running in the background.
+docker ps
+
+# Open the web browser and navigate to "localhost:5050" and "localhost:3000" to confirm both services are working.
+# Search for images on the image gallery to verify functionality.
+
+# Stop the API container named "affectionate_hoover".
+docker stop affectionate_hoover
+
+# List running containers to ensure the API container is stopped.
+docker ps
+
+# Restart the API container named "affectionate_hoover".
+docker start affectionate_hoover
+
+# List running containers to verify that the API container has restarted.
+docker ps
+
+# View the logs of the API container named "affectionate_hoover" to debug any issues.
+docker logs affectionate_hoover
+
+# Creating a Basic Docker Compose File
+# This section would typically include instructions for creating a docker-compose.yml file to simplify the process
+# of running multiple containers together. The file defines the services, networks, and volumes required for the project.
+### Creating a Basic Docker Compose File
+docker ps 
+# Stop the API container named "affectionate_hoover".
+docker stop affectionate_hoover
+# Stop the API container .
+docker stop image-galery-frontend
+docker ps -a
+A Docker Compose file simplifies the management of multi-container applications by defining the services, networks, and volumes required for your project in a single YAML file. Here’s how you can create a basic `docker-compose.yml` file for running both the frontend and API containers:
+cd /home/assulai/Desktop/containers/images-gallery
+1. **Create a `docker-compose.yml` File**:
+   - Open a text editor and create a new file named `docker-compose.yml`.
+	vi docker-compose.yml
+2. **Define the Services**:
+   - In the `docker-compose.yml` file, define the services for the frontend and API containers.
+
+Here's an example `docker-compose.yml` file for the image gallery application:
+
+```yaml
+version: '3.8'
+
+services:
+  api:
+    build: ./api
+    #image: image-gallery-api
+    #container_name: image-gallery-api
+    ports:
+      - "5050:5050"
+    #networks:
+     # - image-gallery-network
+
+  frontend:
+    bulid: ./frontend
+    #image: images-gallery-frontend
+    #container_name: images-gallery-frontend
+    ports:
+      - "3000:3000"
+    #networks:
+     # - image-gallery-network
+
+#networks:
+  #image-gallery-network:
+   # driver: bridge
+```
+
+### Explanation of the Docker Compose File
+
+- **version**: Specifies the version of the Docker Compose file format. Here, version '3.8' is used.
+- **services**: Defines the services to be run.
+  - **api**: The backend service.
+    - **image**: Specifies the Docker image to use for the API service.
+    - **container_name**: Names the container for easier management.
+    - **ports**: Maps port 5050 on the host to port 5050 on the container.
+    - **networks**: Connects the service to the specified network.
+  - **frontend**: The frontend service.
+    - **image**: Specifies the Docker image to use for the frontend service.
+    - **container_name**: Names the container for easier management.
+    - **ports**: Maps port 3000 on the host to port 3000 on the container.
+    - **networks**: Connects the service to the specified network.
+- **networks**: Defines the custom network to which the services will be connected.
+  - **image-gallery-network**: A bridge network for inter-service communication.
+
+### Running the Docker Compose File
+
+1. **Start the Services**:
+   - In the terminal, navigate to the directory containing the `docker-compose.yml` file.
+   - Run the following command to start the services defined in the Docker Compose file:
+    cd /home/assulai/Desktop/containers/images-gallery 
+     ls
+     
+     docker-compose up -d
+   
+
+   - The `-d` flag runs the containers in detached mode.
+
+2. **Verify the Services**:
+   - List the running containers to ensure both services are up and running:
+
+     
+     docker-compose ps
+   
+
+3. **Access the Services**:
+   - Open a web browser and navigate to `http://localhost:5050` for the API service.
+   - Navigate to `http://localhost:3000` for the frontend service.
+
+4. **Stop the Services**:
+   - To stop and remove the containers, networks, and volumes defined in the `docker-compose.yml` file, run:
+
+     
+     docker-compose down
+   
+
+By using Docker Compose, you can simplify the process of managing multi-container applications, making it easier to start, stop, and configure your services with a single command. The `docker-compose.yml` file provides a clear and concise way to define the relationships and dependencies between your services.
+
+*****How to Operate Containers Using docker-compose*****
+cd /home/assulai/Desktop/containers/images-gallery 
+press ctrl+c
+docker stop images-gallery-frontend images-gallery-api
+docker-compose up --help
+ docker-compose up -d
+docker ps
+cess the Services**:
+   - Open a web browser and navigate to `http://localhost:5050` for the API service.
+   - Navigate to `http://localhost:3000` for the frontend service.
+search for something like car on webpage
+ **Stop the Services**:
+   - To stop and remove the containers, networks, and volumes defined in the `docker-compose.yml` file, run:
+     docker-compose down
+ docker-compose up -d
+
+****Creating Volumes Mapping for the Frontend Service****
+docker ps
+vi docker-compose.yml
+2. **Define the Services**:
+   - In the `docker-compose.yml` file, define the services for the frontend and API containers.
+
+Here's an example `docker-compose.yml` file for the image gallery application:
+
+Below is your `docker-compose.yml` file with comments added to explain each line. Additionally, I'll provide an explanation of the steps you described for verifying and modifying the file contents within the Docker container.
+
+### Docker Compose File with Comments
+
+```yaml
+version: '3'  # Specifies the version of Docker Compose file format
+
+services:
+  api:
+    build: ./api  # Builds the Docker image for the API service using the Dockerfile in the ./api directory
+    #image: image-gallery-api  # Specifies the image name (commented out)
+    #container_name: image-gallery-api  # Specifies the container name (commented out)
+    ports:
+      - "5050:5050"  # Maps port 5050 of the host to port 5050 of the container
+    #networks:
+     # - image-gallery-network  # Connects the container to the specified network (commented out)
+
+  frontend:
+    build: ./frontend  # Builds the Docker image for the frontend service using the Dockerfile in the ./frontend directory
+    #image: images-gallery-frontend  # Specifies the image name (commented out)
+    #container_name: images-gallery-frontend  # Specifies the container name (commented out)
+    ports:
+      - "3000:3000"  # Maps port 3000 of the host to port 3000 of the container
+    volumes:
+      - /app/node_modules  # Ensures the node_modules directory inside the container is not overwritten by the volume
+      - ./frontend:/app  # Mounts the ./frontend directory on the host to /app directory inside the container
+    #networks:
+     # - image-gallery-network  # Connects the container to the specified network (commented out)
+
+#networks:
+  #image-gallery-network:
+   # driver: bridge  # Defines a custom bridge network for the services (commented out)
+```
+
+### Steps with Comments to Verify and Modify File Contents
+
+#### Step-by-Step Instructions with Comments
+
+1. **Shut Down Existing Docker Compose Services**:
+
+    
+    docker-compose down  # Stops and removes all containers defined in the docker-compose.yml
+  
+
+2. **Start Docker Compose Services in the Background**:
+
+    
+    docker-compose up -d  # Builds, (re)creates, starts, and attaches to containers for a service in the background
+  
+
+3. **List Running Containers**:
+
+    
+    docker ps  # Lists all running Docker containers
+  
+
+4. **Access the Frontend Container**:
+
+    
+    docker exec -it images-gallery_frontend_1 sh  # Opens a shell inside the running frontend container
+  
+
+5. **List Files in the Container**:
+
+   
+    ls  # Lists files and directories in the current directory inside the container
+  
+
+6. **Navigate to the Project Directory**:
+
+   
+    cd /home/assulai/Desktop/containers/images-gallery/frontend  # Changes directory to the specified path inside the container
+  
+
+7. **View the Contents of Search.js**:
+
+   
+    cat src/component/Search.js  # Displays the contents of the Search.js file
+  
+
+8. **Modify "search" to "search image" in Search.js on the Host Machine**:
+
+    - Open `Search.js` in a text editor on your host machine and change the word "search" to "search image".
+    - Save the changes.
+
+9. **Verify the Change in the Container**:
+
+   
+    cat src/component/Search.js  # Displays the contents of the Search.js file to confirm the change to "search image"
+  
+
+10. **Revert "search image" to "search" in Search.js on the Host Machine**:
+
+    - Open `Search.js` in a text editor on your host machine and change the word "search image" back to "search".
+    - Save the changes.
+
+11. **Verify the Change in the Container**:
+
+   
+    cat src/component/Search.js  # Displays the contents of the Search.js file to confirm the change back to "search"
+  
+### Fix Volumes Sync in the React Container
+
+To ensure volume synchronization works properly in the React container, you can check the following:
+
+- **Volume Configuration**: Ensure the volume paths are correctly set in `docker-compose.yml`.
+- **File System Permissions**: Ensure the user permissions allow Docker to read/write to the mounted volumes.
+
+Here is the `docker-compose.yml` file with comments explaining each command:
+
+```yaml
+version: '3'  # Specifies the version of Docker Compose file format
+
+services:
+  api:
+    build: ./api  # Builds the Docker image for the API service using the Dockerfile in the ./api directory
+    #image: image-gallery-api  # Specifies the image name (commented out)
+    #container_name: image-gallery-api  # Specifies the container name (commented out)
+    ports:
+      - "5050:5050"  # Maps port 5050 of the host to port 5050 of the container
+    #networks:
+     # - image-gallery-network  # Connects the container to the specified network (commented out)
+    volumes:  # Ensures volume mapping for the API service
+      - ./api:/app  # Mounts the ./api directory on the host to /app directory inside the container
+
+  frontend:
+    build: ./frontend  # Builds the Docker image for the frontend service using the Dockerfile in the ./frontend directory
+    #image: images-gallery-frontend  # Specifies the image name (commented out)
+    #container_name: images-gallery-frontend  # Specifies the container name (commented out)
+    ports:
+      - "3000:3000"  # Maps port 3000 of the host to port 3000 of the container
+    volumes:
+      - /app/node_modules  # Ensures the node_modules directory inside the container is not overwritten by the volume
+      - ./frontend:/app  # Mounts the ./frontend directory on the host to /app directory inside the container
+    environment:  # Environment variables for the frontend service
+      - CHOKIDAR_USEPOLLING=true  # Enables polling for file changes to support live reload in development
+    #networks:
+     # - image-gallery-network  # Connects the container to the specified network (commented out)
+
+#networks:
+  #image-gallery-network:
+   # driver: bridge  # Defines a custom bridge network for the services (commented out)
+```
+
+### Docker Compose Commands
+
+```sh
+docker-compose down  # Stops and removes all containers defined in the docker-compose.yml file
+docker-compose up -d  # Builds, (re)creates, starts, and attaches to containers in detached mode
+docker ps  # Lists all running Docker containers
+```
+
+- **Open a web browser and navigate to `http://localhost:5050` for the API service.**
+- **Navigate to `http://localhost:3000` for the frontend service.**
+
+### View the Contents of Search.js
+
+```sh
+cat src/component/Search.js  # Displays the contents of the Search.js file
+```
+
+### Modify "search" to "search image" in Search.js on the Host Machine
+
+- Open `Search.js` in a text editor on your host machine and change the word "search" to "search image".
+- Save the changes.
+
+### Verify the Change in the Container
+
+Open the browser and verify the search button.
+
+### Enabling Volumes Mapping for the API Service
+
+```sh
+docker logs images-gallery_frontend_1  # View logs of the frontend service container
+
+# Open a new terminal and modify Search.js
+vi src/component/Search.js  # Open Search.js in vi editor, add a new empty line, and save it
+
+docker logs images-gallery_frontend_1  # View logs again to check for changes
+```
+
+### Enabling auto-restart and docker-compose Summary for API and Frontend
+
+```sh
+vi docker-compose.yml  # Open docker-compose.yml for editing
+# Add the following under the api service
+volumes:
+  - ./api:/app  # Mounts the ./api directory on the host to /app directory inside the container
+save the file
+
+docker-compose up -d  # Recreate and start containers
+docker ps  # Lists all running Docker containers
+docker exec -it images-gallery_api_1 bash  # Access the API container's shell
+ls  # List files in the current directory inside the container
+cat main.py  # Display the contents of main.py
+```
+
+### Modify main.py on the Host Machine
+
+Open another terminal and modify `main.py` under the `api` directory:
+
+```sh
+cd api
+vi main.py  # Open main.py in vi editor
+# Add the following under the word function
+return {"word": word}
+save and close the file
+
+docker logs images-gallery_api_1  # View logs of the API service container
+# Logs should show detected changes and reload information
+# e.g., "Detected change in '/app/main.py', reloading"
+# "Restarting with stat"
+# "Debugger is active!"
+# "Debugger PIN: 146-038-053"
+```
+
+### Revert the Change in main.py
+
+```sh
+vi main.py  # Open main.py in vi editor
+# Remove the previously added return statement
+return {"word": word}
+save and close the file
+```
+***Enabling auto-restart and docker-compose Summary for API and Frontend***
+
+vi docker-compose.yml
+version: '3'  # Specifies the version of Docker Compose file format
+
+services:
+  api:
+    build: ./api  # Builds the Docker image for the API service using the Dockerfile in the ./api directory
+    #image: image-gallery-api  # Specifies the image name (commented out)
+    #container_name: image-gallery-api  # Specifies the container name (commented out)
+    ports:
+      - "5050:5050"  # Maps port 5050 of the host to port 5050 of the container
+    volumes:
+      - ./api:/app  # Mounts the ./api directory on the host to /app directory inside the container
+    restart: always  # Ensures the container is always restarted if it stops
+
+  frontend:
+    build: ./frontend  # Builds the Docker image for the frontend service using the Dockerfile in the ./frontend directory
+    #image: images-gallery-frontend  # Specifies the image name (commented out)
+    #container_name: images-gallery-frontend  # Specifies the container name (commented out)
+    ports:
+      - "3000:3000"  # Maps port 3000 of the host to port 3000 of the container
+    volumes:
+      - /app/node_modules  # Ensures the node_modules directory inside the container is not overwritten by the volume
+      - ./frontend:/app  # Mounts the ./frontend directory on the host to /app directory inside the container
+    environment:  # Environment variables for the frontend service
+      - CHOKIDAR_USEPOLLING=true  # Enables polling for file changes to support live reload in development
+    restart: always  # Ensures the container is always restarted if it stops
+
+#networks:
+  #image-gallery-network:
+   # driver: bridge  # Defines a custom bridge network for the services (commented out)
+
+   ********Adding Mongo and mongo-express Services to the docker-compose File*****
+
+vi docker-compose.yml
+version: '3'  # Specifies the version of Docker Compose file format
+
+services:
+  api:
+    build: ./api  # Builds the Docker image for the API service using the Dockerfile in the ./api directory
+    #image: image-gallery-api  # Specifies the image name (commented out)
+    #container_name: image-gallery-api  # Specifies the container name (commented out)
+    ports:
+      - "5050:5050"  # Maps port 5050 of the host to port 5050 of the container
+    volumes:
+      - ./api:/app  # Mounts the ./api directory on the host to /app directory inside the container
+    restart: always  # Ensures the container is always restarted if it stops
+
+  frontend:
+    build: ./frontend  # Builds the Docker image for the frontend service using the Dockerfile in the ./frontend directory
+    #image: images-gallery-frontend  # Specifies the image name (commented out)
+    #container_name: images-gallery-frontend  # Specifies the container name (commented out)
+    ports:
+      - "3000:3000"  # Maps port 3000 of the host to port 3000 of the container
+    volumes:
+      - /app/node_modules  # Ensures the node_modules directory inside the container is not overwritten by the volume
+      - ./frontend:/app  # Mounts the ./frontend directory on the host to /app directory inside the container
+    environment:  # Environment variables for the frontend service
+      - CHOKIDAR_USEPOLLING=true  # Enables polling for file changes to support live reload in development
+    restart: always  # Ensures the container is always restarted if it stops
+
+  # networks:
+  #   image-gallery-network:
+  #     driver: bridge  # Defines a custom bridge network for the services (commented out)
+
+  mongo:
+    image: mongo  # Uses the official MongoDB image from Docker Hub
+    restart: always  # Ensures the container is always restarted if it stops
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root  # Sets the MongoDB root username
+      MONGO_INITDB_ROOT_PASSWORD: root  # Sets the MongoDB root password
+
+  mongo-express:
+    image: mongo-express  # Uses the official Mongo Express image from Docker Hub
+    restart: always  # Ensures the container is always restarted if it stops
+    ports:
+      - 8081:8081  # Maps port 8081 of the host to port 8081 of the container
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo  # Specifies the MongoDB server to connect to
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root  # Sets the admin username for MongoDB
+      ME_CONFIG_MONGODB_ADMINPASSWORD: root  # Sets the admin password for MongoDB
+      # ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/  # MongoDB connection URL (commented out)
+      # ME_CONFIG_BASICAUTH: false  # Disables basic authentication (commented out)
+    depends_on:
+      - mongo  # Ensures that the mongo service starts before mongo-express
+
+
+***save the file and close***
+docker-compose up -d 
+docker images 
+docker ps 
+
+*****Using Mongo Shell and mongo-express GUI****
+docker ps 
+docker exec -it images-gallery_mongo_1 mongo --username=root --password=root 
+> show dbs
+> use admin
+> show collections
+**switch to mongo-express open the browser and type "localhost:8081"
+
+***Configuring Persistent Data Volume for the Mongo Container****
+vi docker-compose.yml
+**add the following under mongo
+mongo:
+    
+    volumes:
+      - mongodb_data:/data/db  # Mounts the named volume 'mongodb_data' to store MongoDB data
+***add the following end of the file
+volumes:
+  mongodb_data:
+**save and close the file**
+
+It looks like you're exploring networking between Docker containers and troubleshooting connectivity. Here’s a step-by-step approach to handle these tasks effectively:
+
+### Stopping and Removing Containers (without removing volumes)
+
+To stop and remove Docker containers managed by `docker-compose` without removing volumes:
+
+```bash
+docker-compose down
+```
+
+This command stops and removes containers defined in your `docker-compose.yml` file without removing associated volumes.
+
+### Creating and Starting Containers
+
+To create and start Docker containers defined in your `docker-compose.yml` file in detached mode:
+
+```bash
+docker-compose up -d
+```
+
+This command starts containers in the background (detached mode).
+
+### Listing Docker Volumes
+
+To list Docker volumes:
+
+```bash
+docker volume ls
+```
+
+This command lists all Docker volumes on your system.
+
+### Exploring Networking Between Docker Containers
+
+1. **Restart Docker Service**
+
+   If needed, restart the Docker service:
+
+  
+   sudo systemctl restart docker
+
+
+2. **List Running Containers**
+
+   To list running Docker containers:
+
+  
+   docker ps
+
+
+3. **List Docker Networks**
+
+   To list Docker networks:
+
+  
+   docker network ls
+
+
+4. **Inspect Docker Network**
+
+   To inspect a specific Docker network (replace `images-gallery_default` with your actual network name):
+
+
+   docker network inspect images-gallery_default
+
+
+5. **Inspect IPv4 Addresses of Containers in the Network**
+
+   To grep IPv4 addresses from the network inspection output:
+
+  
+   docker network inspect images-gallery_default | grep IPv4Address
+
+
+6. **Access a Container and Check Networking**
+
+   Access a container (`images-gallery_api_1` in this example) and perform networking checks:
+
+  
+   docker exec -it images-gallery_api_1 bash
+
+
+   Inside the container, check hostname and IP address:
+
+  
+   hostname
+   hostname -i
+
+
+   Update package repositories and install `ping` utility if needed:
+
+  
+   sudo apt update
+   sudo apt install iputils-ping
+
+
+   Then, perform `ping` tests to check connectivity to other containers (replace `172.23.0.1`, `mongo`, and `mongo-express` with appropriate IP addresses or container names):
+
+  
+   ping 172.23.0.1  # Example IP address of another container
+   ping mongo       # Example container name
+   ping mongo-express  # Another example container name
+
+
+### Notes:
+- Replace placeholders (`images-gallery_default`, `images-gallery_api_1`, `mongo`, `mongo-express`, etc.) with actual container names, network names, and IP addresses relevant to your Docker setup.
+- Ensure proper network connectivity and DNS resolution within Docker containers, especially when using container names instead of IP addresses.
+- Adjust commands based on your specific Docker environment and requirements.
+
+
+
+
+
+
+
