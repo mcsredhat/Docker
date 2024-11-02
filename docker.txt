@@ -1,7 +1,4 @@
 
-
-
-
 # Run the hello-world Docker image to verify that Docker is installed and working correctly
 sudo docker run hello-world 
 
