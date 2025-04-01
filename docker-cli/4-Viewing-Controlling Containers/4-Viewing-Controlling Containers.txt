@@ -1,0 +1,308 @@
+
+# Viewing & Controlling Docker Containers
+
+## 1. Understanding Container Visibility (docker ps)
+
+The `docker ps` command is your primary window into the containerized world. While seemingly simple, it provides critical operational information:
+docker ps -a
+What happens when you run this command? Docker queries its internal database of containers and returns information about:
+- Container IDs (both short and long forms)
+- Container names (user-defined or automatically generated)
+- Base images
+- Commands being run
+- Creation times
+- Current status
+- Port mappings
+- Attached networks
+
+Let's explore some advanced usage patterns:
+# Show only running containers with specific labels
+docker ps --filter "label=environment=production" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}"
+
+# Find containers consuming the most resources
+docker ps --format "{{.ID}}: {{.Names}}" | xargs docker stats --no-stream
+
+# List all containers that exited with an error code
+docker ps -a --filter "status=exited" --filter "exited=1"
+The `--format` flag with Go templates gives you precise control over the output format, making it ideal for scripting and automation. For example, to create a monitoring script that checks container health:
+# Extract container status for monitoring
+containers=$(docker ps --format "{{.Names}},{{.Status}}")
+for container in $containers; do
+  name=$(echo $container | cut -d',' -f1)
+  status=$(echo $container | cut -d',' -f2)
+  if [[ $status != Up* ]]; then
+    echo "ALERT: Container $name is not running properly: $status"
+  fi
+done
+
+## 2. Deep Dive into Container Logs (docker logs)
+Logs are the narrative of your container's life. The `docker logs` command gives you access to this story:
+docker logs <container-id>
+When you run this command, Docker:
+1. Locates the container's log files in `/var/lib/docker/containers/<container-id>/`
+2. Reads the content of these files (typically in JSON format)
+3. Formats and presents the logs to you
+Advanced logging techniques:
+# View logs with timestamps for debugging timing issues
+docker logs --timestamps web-server
+# Extract recent error logs for troubleshooting
+docker logs --since 30m api-service | grep -i error > recent_errors.log
+# Monitor multiple containers simultaneously
+docker logs -f $(docker ps -q --filter name=api-) 2>&1 | grep "Connection refused"
+For production environments, consider integrating with logging platforms:
+# Run with log driver configuration
+docker run -d --log-driver=syslog --log-opt syslog-address=udp://logserver:514 nginx
+
+Understanding log rotation is crucial for long-running containers:
+# Configure log rotation to prevent disk space issues
+docker run -d --log-opt max-size=10m --log-opt max-file=3 nginx
+This prevents a single container from filling your disk with logs by maintaining only the most recent log files.
+
+## 3. Container Inspection and Troubleshooting (docker inspect)
+`docker inspect` is your forensic tool for container investigation. It reveals the complete configuration and runtime state:
+docker inspect <container-id>
+This command returns a wealth of information in JSON format, including:
+- Complete container configuration
+- Runtime state (running, stopped, exit code)
+- Network settings (IP addresses, DNS, MAC address)
+- Resource limits and constraints
+- Volume mounts and bindings
+- Environment variables
+- Command history
+
+For effective troubleshooting, learn to extract specific information:
+# Check if a container is healthy
+docker inspect --format "{{.State.Health.Status}}" db-container
+
+# Find out why a container exited
+docker inspect --format "{{.State.ExitCode}} - {{.State.Error}}" failed-service
+
+# Locate all mounted volumes
+docker inspect --format "{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}" web-app
+
+When diagnosing networking issues, extract network details:
+# Find the container's IP address in a specific network
+docker inspect --format "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" app-container
+
+# Check if port mappings are configured correctly
+docker inspect --format "{{range $p, $conf := .NetworkSettings.Ports}}{{$p}} -> {{(index $conf 0).HostPort}}{{println}}{{end}}" web-server
+
+For security audits, examine the container's privileges and capabilities:
+# Check for privileged mode (potential security risk)
+docker inspect --format "{{.HostConfig.Privileged}}" container-name
+
+# List Linux capabilities granted to the container
+docker inspect --format "{{.HostConfig.CapAdd}}" container-name
+
+## 4. Process Monitoring within Containers (docker top)
+The `docker top` command provides visibility into processes running inside a container:
+docker top <container-id>
+This command maps to the `ps` command running inside the container but executed from the host. It's particularly useful for:
+- Verifying the main application is running
+- Detecting unexpected or zombie processes
+- Identifying resource-intensive processes
+- Troubleshooting application behavior
+For more detailed process information:
+# Show process resource usage
+docker top web-server aux
+
+# Focus on specific information
+docker top db-server -o pid,user,pcpu,pmem,args
+
+# Monitor process changes over time
+watch docker top api-service
+Understanding container processes is crucial because, unlike traditional servers, containers typically should run a single main process. Multiple processes can indicate poor container design or security issues.
+
+## 5. Efficient Container Removal and Cleanup (docker rm)
+Proper container cleanup prevents resource leaks and maintains system health:
+docker rm <container-id>
+When you remove a container:
+1. Docker checks if the container is running
+2. If stopped, it removes container metadata, configuration, and filesystem
+3. Optionally removes attached volumes with `-v`
+
+Develop efficient cleanup workflows:
+# Remove all stopped containers
+docker container prune
+
+# Remove containers older than 24 hours
+docker container prune --filter "until=24h"
+
+# Remove containers, networks, and dangling images in one command
+docker system prune
+
+# Remove everything, including unused volumes (use with caution)
+docker system prune --volumes -a
+For production environments, implement regular cleanup to prevent resource exhaustion:
+# Scheduled cleanup script example
+#!/bin/bash
+# Remove exited containers older than 7 days
+docker container prune --force --filter "until=168h"
+# Remove unused images older than 30 days
+docker image prune --all --force --filter "until=720h"
+# Remove unused volumes (if safe to do so)
+# docker volume prune --force
+
+## Hands-On Exercise: Comprehensive Container Management
+
+This exercise demonstrates a real-world workflow for deployment, monitoring, and troubleshooting:
+# 1. Create a simple web application with a health check
+mkdir -p container-demo/app
+cd container-demo
+
+cat > app/server.js << EOF
+const http = require('http');
+const os = require('os');
+
+// Track requests for demo purposes
+let requestCount = 0;
+
+const server = http.createServer((req, res) => {
+  requestCount++;
+  
+  // Simple routing
+  if (req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'healthy', uptime: process.uptime() }));
+    return;
+  }
+  
+  if (req.url === '/crash') {
+    console.error('Manual crash triggered');
+    process.exit(1);
+  }
+  
+  // Regular response
+  res.writeHead(200, { 'Content-Type': 'text/html' });
+  res.end(`<html>
+    <body>
+      <h1>Container Demo</h1>
+      <p>Hostname: ${os.hostname()}</p>
+      <p>Total requests: ${requestCount}</p>
+      <p>Uptime: ${process.uptime().toFixed(2)} seconds</p>
+    </body>
+  </html>`);
+  
+  // Log each request
+  console.log(`Request received: ${req.url} (total: ${requestCount})`);
+});
+
+server.listen(3000, () => {
+  console.log('Server started on port 3000');
+});
+
+// Log memory usage every 30 seconds
+setInterval(() => {
+  const memoryUsage = process.memoryUsage();
+  console.log(`Memory usage: ${Math.round(memoryUsage.rss / 1024 / 1024)} MB`);
+}, 30000);
+EOF
+
+cat > Dockerfile << EOF
+FROM node:18-slim
+
+# Add metadata
+LABEL maintainer="Docker Training"
+LABEL version="1.0"
+LABEL environment="development"
+
+# Create app directory
+WORKDIR /app
+
+# Install app dependencies
+COPY app/server.js .
+
+# Set restart policy for crashed containers
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Expose port
+EXPOSE 3000
+
+# Run application
+CMD ["node", "server.js"]
+EOF
+
+# 2. Build and run the container
+docker build -t container-monitor-demo:latest .
+docker run -d -p 3000:3000 --name web-monitor container-monitor-demo:latest
+# 3. Explore container monitoring commands
+echo "Listing all containers with custom format:"
+docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}"
+echo -e "\nMonitoring logs in real-time (press Ctrl+C after a few seconds):"
+timeout 10s docker logs -f web-monitor || true
+echo -e "\nMaking a request to generate log entries:"
+curl http://localhost:3000
+echo -e "\nViewing recent logs after the request:"
+docker logs --tail 5 web-monitor
+echo -e "\nChecking container processes:"
+docker top web-monitor
+echo -e "\nInspecting container health status:"
+docker inspect --format "{{.State.Health.Status}}" web-monitor
+
+echo -e "\nExtracting network information:"
+docker inspect --format "{{range \$k, \$v := .NetworkSettings.Ports}}{{printf \"%s -> %s\" \$k (\$v | printf \"%s\" . | printf \"%s\" .)}}{{end}}" web-monitor
+
+# 4. Trigger and troubleshoot a container crash
+echo -e "\nTriggering a crash via HTTP request:"
+curl http://localhost:3000/crash
+echo -e "\nChecking container status after crash:"
+docker ps -a --filter name=web-monitor
+echo -e "\nViewing exit logs to diagnose the crash:"
+docker logs --tail 10 web-monitor
+echo -e "\nChecking exit code:"
+docker inspect --format "{{.State.ExitCode}}" web-monitor
+
+# 5. Clean up
+echo -e "\nRemoving the container:"
+docker rm web-monitor
+echo -e "\nRemoving the image:"
+docker rmi container-monitor-demo:latest
+This comprehensive exercise demonstrates:
+- Realistic application development with health checks
+- Multiple monitoring techniques
+- Troubleshooting a crashed container
+- Extracting specific diagnostic information
+- Proper cleanup procedures
+
+## Advanced Container Management Concepts
+### Container Resource Monitoring
+For production environments, detailed resource monitoring is essential:
+# Show container resource usage
+docker stats
+
+# Monitor specific containers
+docker stats web-app db-server cache
+
+# Format output for specific metrics
+docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"
+### Container Auditing
+Establish an audit trail for container operations:
+# Check container creation time
+docker inspect --format "{{.Created}}" container-name
+
+# List all container mounts (potential data access)
+docker inspect --format "{{range .Mounts}}{{.Source}} -> {{.Destination}} ({{.Mode}}){{println}}{{end}}" container-name
+# Export container filesystem for forensic analysis
+docker export container-name > container-filesystem.tar
+
+### Automated Container Management
+For more complex environments, consider automated management:
+# Script to restart unhealthy containers
+for container in $(docker ps --filter health=unhealthy --format "{{.Names}}"); do
+  echo "Restarting unhealthy container: $container"
+  docker restart $container
+done
+
+# Clean up containers based on exit code
+for container in $(docker ps -a --filter status=exited --format "{{.ID}}:{{.Names}}"); do
+  id=$(echo $container | cut -d: -f1)
+  name=$(echo $container | cut -d: -f2)
+  exit_code=$(docker inspect --format "{{.State.ExitCode}}" $id)
+  
+  if [ "$exit_code" != "0" ]; then
+    echo "Container $name exited with code $exit_code - logging and removing"
+    docker logs $id > "logs_${name}_$(date +%F_%H-%M-%S).log"
+    docker rm $id
+  fi
+done

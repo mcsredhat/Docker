@@ -1,0 +1,307 @@
+# Docker Resource Management & Optimization
+## Introduction
+Resource management is a critical aspect of container deployment that ensures applications run efficiently without overwhelming the host system. This guide explains how to control, monitor, and optimize Docker container resources for stable and efficient deployments.
+## 1. Understanding Container Resource Constraints
+Docker containers share the host system's resources but can be configured to use only specific amounts of CPU, memory, and other resources. Properly setting these constraints provides several benefits:
+- Prevents a single container from consuming all system resources
+- Ensures fair resource distribution among multiple containers
+- Makes container behavior more predictable across different environments
+- Improves overall system stability and performance
+
+## 2. Limiting CPU & Memory Usage
+### Basic Resource Limiting Commands
+docker run --memory=512m --cpus=1 <image>
+### Purpose and Mechanism
+These limits restrict how much of the host's resources a container can utilize. Docker implements these constraints using Linux control groups (cgroups), which provide kernel-level resource allocation and isolation.
+### Memory Limitations
+**Syntax**: `--memory=<size>` or `-m`
+**Examples**:
+- `--memory=512m` (512 megabytes)
+- `--memory=1g` (1 gigabyte)
+**Behavior**: When a container reaches its memory limit, it may be terminated by the Out-Of-Memory (OOM) killer if it attempts to allocate more memory.
+
+### CPU Limitations
+**Syntax**: `--cpus=<number>`
+**Examples**:
+- `--cpus=1` (one full CPU core)
+- `--cpus=0.5` (half a CPU core)
+- `--cpus=2.5` (two and a half CPU cores)
+**Behavior**: When a container reaches its CPU limit, it gets throttled rather than terminated, causing the container to slow down.
+### Complete Example
+docker run -d --memory=512m --cpus=1 --name resource-test nginx:latest
+This command runs an Nginx container with:
+- A maximum of 512MB memory allocation
+- Access to the equivalent of one full CPU core
+- A container name of "resource-test"
+
+### Verifying Resource Limits
+To confirm the limits were properly applied:
+docker inspect resource-test | grep -i "memory\|cpu"
+The output will include these values (in bytes and nanoseconds):
+- `"Memory": 536870912` (512MB in bytes)
+- `"NanoCpus": 1000000000` (1 CPU in nanocpus)
+
+### Advanced Memory Options
+For more granular memory control, you can use:
+- `--memory-swap`: Total amount of memory plus swap the container can use
+  Example: `--memory=512m --memory-swap=1g` (512MB RAM + 512MB swap)
+- `--memory-reservation`: Soft limit that triggers when memory is constrained on the host
+  Example: `--memory=512m --memory-reservation=400m`
+
+## 3. Monitoring Container Performance
+### Using docker stats
+The `docker stats` command provides real-time statistics about container resource usage.
+**Basic Syntax**:
+docker stats [options] [container-id/name]
+
+**Key Options**:
+- `--no-stream`: Show a single snapshot rather than continuous updates
+- `--format`: Customize the output format using Go templates
+
+**Example**:
+# Monitor all running containers
+docker stats
+# Monitor a specific container
+docker stats nginx-demo
+# Get a single snapshot
+docker stats --no-stream nginx-demo
+# Custom format
+docker stats --format "{{.Name}}: CPU {{.CPUPerc}} MEM {{.MemPerc}}"
+
+### Understanding the Output
+The `docker stats` command displays these metrics:
+| Field | Description |
+|-------|-------------|
+| CONTAINER ID | Unique container identifier |
+| NAME | Container name |
+| CPU % | Percentage of host CPU capacity used |
+| MEM USAGE / LIMIT | Current memory usage and configured limit |
+| MEM % | Percentage of memory limit used |
+| NET I/O | Network data transferred in/out |
+| BLOCK I/O | Disk data read/written |
+| PIDS | Number of processes running in the container |
+
+### Practical Application
+Monitoring is especially valuable for:
+- Troubleshooting performance issues
+- Identifying resource-intensive containers
+- Fine-tuning resource allocations
+- Verifying resource constraints are working as expected
+
+## 4. Managing System Resources
+### Viewing Docker Disk Usage
+The `docker system df` command shows how much disk space Docker objects are consuming.
+**Basic Syntax**:
+docker system df [options]
+
+**Key Options**:
+- `-v` or `--verbose`: Show detailed breakdown by individual object
+**Example Output**:
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          5         2         750MB     500MB
+Containers      3         1         2.5MB     2MB
+Local Volumes   2         1         100MB     50MB
+Build Cache     0         0         0B        0B
+
+### Detailed Information with Verbose Mode
+docker system df -v
+This command lists:
+- Each image with its size and creation time
+- Each container with its size and status
+- Each volume with its size and reference status
+
+### Reclaiming Disk Space
+When disk usage becomes a concern, use these commands:
+1. Remove specific unused objects:
+   docker image prune   # Remove dangling images
+   docker container prune   # Remove stopped containers
+   docker volume prune   # Remove unused volumes
+
+2. Remove all unused objects at once:
+   docker system prune   # Remove stopped containers, dangling images, networks
+   docker system prune -a   # Also remove unused images
+   docker system prune -a --volumes   # Also remove unused volumes
+
+## 5. Hands-on Demonstration: Resource-Limited Nginx Container
+This exercise demonstrates how to apply resource constraints and monitor them in action.
+### Step 1: Launch Container with Limits
+docker run -d --memory=256m --cpus=0.5 --name nginx-limited -p 8080:80 nginx:latest
+This command:
+- Runs an Nginx container in detached mode
+- Limits memory to 256MB
+- Restricts CPU usage to half a core
+- Names the container "nginx-limited"
+- Maps port 8080 on the host to port 80 in the container
+
+### Step 2: Monitor Container Performance
+docker stats nginx-limited
+This will show real-time resource usage. Observe that:
+- CPU usage will not exceed 50% of one core (shown as 0.50%)
+- Memory usage will remain below 256MB
+
+### Step 3: Inspect the Container
+docker inspect nginx-limited | grep -i "memory\|cpu"
+This verifies that the limits were correctly applied to the container configuration.
+
+### Step 4: Check System Resource Usage
+docker system df -v
+This shows the disk space used by the container and its image.
+
+### Step 5: Access the Container
+curl http://localhost:8080
+This confirms that the container is running and serving content despite the resource constraints.
+
+I'll rewrite the project with a well-structured setup including a Dockerfile, environment variables file, and requirements file.
+Here's the organized project structure:
+/secure-web-server
+├── Dockerfile
+├── .env
+├── requirements.txt
+├── app.py
+└── README.md
+Dockerfile
+dockerfile
+# Use slim Python 3.9 as base image for smaller footprint
+FROM python:3.9-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PORT=8000
+
+# Update packages and install security updates
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create non-root user and group for security
+RUN groupadd -r appgroup && \
+    useradd -r -g appgroup -m appuser
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first (optimization for caching)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY app.py .
+
+# Set ownership and permissions
+RUN chown -R appuser:appgroup /app
+USER appuser
+
+# Expose port
+EXPOSE ${PORT}
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD curl -f http://localhost:${PORT}/ || exit 1
+
+# Run the application
+CMD ["python", "app.py"]
+.env
+plaintext
+# Environment variables
+PORT=8000
+DEBUG=false
+MAX_CONNECTIONS=100
+requirements.txt
+plaintext
+# Application dependencies
+gunicorn==20.1.0
+app.py
+python
+import http.server
+import socketserver
+import os
+
+PORT = int(os.getenv("PORT", 8000))
+MAX_CONNECTIONS = int(os.getenv("MAX_CONNECTIONS", 100))
+
+class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+Handler = CustomHTTPRequestHandler
+socketserver.TCPServer.allow_reuse_address = True
+
+with socketserver.ThreadingTCPServer(("", PORT), Handler) as httpd:
+    print(f"Serving at port {PORT}")
+    httpd.socket.setsockopt(socketserver.socket.SOL_SOCKET, socketserver.socket.SO_REUSEADDR, 1)
+    httpd.server_name = "SecurePythonServer"
+    httpd.max_children = MAX_CONNECTIONS
+    httpd.serve_forever()
+README.md
+markdown
+# Secure and Optimized Web Server
+
+## Prerequisites
+- Docker
+- Docker Compose (optional)
+
+## Building the Image
+```bash
+docker build -t secure-python-web:latest .
+Running the Container
+bash
+docker run -d \
+  --name py-web \
+  --memory=128m \
+  --cpus=0.25 \
+  -p 8000:8000 \
+  --env-file .env \
+  secure-python-web:latest
+Monitoring
+bash
+# Check running containers
+docker ps
+
+# View resource usage
+docker stats py-web
+
+# Test the server
+curl http://localhost:8000
+
+# Inspect container configuration
+docker inspect py-web | grep -i "memory\|cpu"
+Load Testing
+bash
+# Install Apache Bench if needed
+sudo apt install apache2-utils
+
+# Run load test
+ab -n 1000 -c 10 http://localhost:8000/
+Security Features
+Non-root user
+Minimal base image
+Regular security updates
+Resource constraints
+Health checks
+Environment variable configuration
+Optimization Features
+Layer caching with requirements
+Threaded server for better performance
+Configurable max connections
+Port reuse enabled
+
+To use this project:
+
+1. Create the directory structure and files as shown above
+2. Build the Docker image:
+```bash
+docker build -t secure-python-web:latest .
+Run the container with the specified constraints:
+bash
+docker run -d --name py-web --memory=128m --cpus=0.25 -p 8000:8000 --env-file .env secure-python-web:latest
+This improved version includes:
+Environment variable support via .env file
+Proper dependency management with requirements.txt
+A more robust web server implementation with threading
+Health checks for container monitoring
+Better security practices (user group, permissions)
+Optimization features (layer caching, port reuse)
+Comprehensive documentation
+Configurable settings through environment variables
+The server maintains the original security and resource optimization goals while adding better structure and production-ready features.

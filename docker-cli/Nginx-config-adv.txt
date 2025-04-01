@@ -1,0 +1,72 @@
+#!/bin/bash
+# =====================================
+# Optimized Nginx Docker Setup Script
+# =====================================
+
+# Strict error handling
+set -euo pipefail
+
+# Validate Script is Run as Root
+if [[ $EUID -ne 0 ]]; then
+   echo "Error: This script must be run as root" 
+   exit 1
+fi
+
+# Ensure required directories exist for configuration, logs, HTML files, and SSL certificates
+mkdir -p /host/nginx/conf /host/nginx/logs /host/nginx/html /host/nginx/ssl
+
+# Set secure permissions for the directories (owner can read/write/execute, group can read/execute)
+chmod 750 /host/nginx/conf /host/nginx/logs /host/nginx/html
+
+# Run the Nginx container with optimized settings
+docker run \
+    --name my-nginx \  # Set the container name to 'my-nginx'
+    --hostname nginx-host \  # Assign a hostname to the container
+    --label app=webserver \  # Label to identify the application type
+    --label version=latest \  # Label to track the version
+    --label maintainer=your-team \  # Label to document the maintainer's team
+
+    # Memory & CPU limits to ensure efficient resource utilization
+    --memory=256m \  # Hard memory limit to prevent excessive usage
+    --memory-reservation=128m \  # Soft memory reservation to ensure base memory availability
+    --memory-swap=512m \  # Allow swapping up to 512MB if needed
+    --oom-kill-disable=false \  # Allow the OS to kill the container if it runs out of memory
+    --cpus="0.8" \  # Limit CPU usage to 80% of a single core
+    --cpu-shares=512 \  # CPU share allocation for priority handling
+    --pids-limit=100 \  # Prevent fork bombs by limiting process count inside the container
+
+    # Network settings
+    --network my-network \  # Attach the container to a custom user-defined network
+
+    # Publish container ports to the host machine
+    --publish 8080:80 \  # Map container's HTTP port 80 to host port 8080
+    --publish 8443:443 \  # Map container's HTTPS port 443 to host port 8443
+
+    # Mount volumes for persistent storage
+    --volume /host/nginx/conf:/etc/nginx/conf.d:ro \  # Mount custom Nginx config (read-only)
+    --volume /host/nginx/html:/usr/share/nginx/html:ro \  # Mount website files (read-only)
+    --volume /host/nginx/ssl:/etc/nginx/ssl:ro \  # Mount SSL certificates (read-only)
+    --volume /host/nginx/logs:/var/log/nginx:rw \  # Mount logs with read/write access
+
+    # Security configurations
+    --user nginx \  # Run the container as a non-root user (nginx) for security
+    --restart unless-stopped \  # Restart automatically unless manually stopped
+    --read-only \  # Make the filesystem read-only to prevent unauthorized modifications
+    --tmpfs /run \  # Use tmpfs for runtime files (in-memory storage)
+    --tmpfs /var/log/nginx:size=10m,mode=1777 \  # Store logs in memory (10MB size limit)
+    --tmpfs /tmp:size=50m,mode=1777 \  # Store temporary files in memory (50MB size limit)
+
+    # Health check to ensure Nginx is running
+    --health-cmd="curl --silent --fail http://localhost/health || exit 1" \  # Check if Nginx is serving requests
+    --health-interval=30s \  # Run health check every 30 seconds
+    --health-retries=3 \  # Allow up to 3 failed health checks before marking the container unhealthy
+    --health-timeout=5s \  # Timeout of 5 seconds for each health check
+
+    # Additional security measures
+    --security-opt=no-new-privileges:true \  # Prevent privilege escalation inside the container
+    --cap-drop=ALL \  # Drop all Linux capabilities to reduce attack surface
+    --cap-add=NET_BIND_SERVICE \  # Allow only the capability to bind to privileged ports
+
+    # Use the stable Alpine variant of Nginx (lightweight and secure)
+    --detach \  # Run the container in detached mode (background)
+    nginx:stable-alpine  # Use the stable-alpine version of Nginx for smaller footprint

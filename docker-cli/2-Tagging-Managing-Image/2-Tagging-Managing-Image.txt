@@ -1,0 +1,228 @@
+#  Tagging & Managing Docker Image Versions
+
+## Objective
+Master the techniques for Docker image versioning through tagging, transferring images between systems, and sharing images via registries - essential skills for implementing proper CI/CD workflows and production deployment strategies.
+
+## 1. Understanding Image Tagging (docker tag)
+
+Docker image tags are essentially pointers to specific image IDs in the Docker daemon's storage. When you tag an image, you're creating a human-readable reference to a specific image content hash. This is conceptually similar to Git branches pointing to specific commits.
+
+# Basic tagging syntax
+docker tag <source-image> <target-repo>:<target-tag>
+# Create multiple tags for the same image
+docker tag nginx:1.23 my-nginx:production
+docker tag nginx:1.23 my-nginx:1.23.0
+docker tag nginx:1.23 registry.example.com:5000/my-team/nginx:1.23
+
+The Docker CLI translates these tag commands into operations that update Docker's internal reference database without duplicating the actual image data. This reference system is how Docker implements its "copy-on-write" strategy.
+
+### Tagging Best Practices
+# Use semantic versioning
+docker tag my-app:latest my-app:1.0.0
+# Include build information
+docker tag my-app:latest my-app:1.0.0-build.42
+# Environment-specific tags
+docker tag my-app:1.0.0 my-app:production
+docker tag my-app:1.0.0-rc.1 my-app:staging
+
+When implementing CI/CD pipelines, a good practice is to use git commit hashes as part of your tags to ensure traceability back to source code:
+# Adding git commit information to tags
+docker tag my-app:latest my-app:1.0.0-$(git rev-parse --short HEAD)
+
+## 2. Saving & Loading Images for Transfer
+Docker's save and load commands operate at the image layer level, preserving the complete layer structure and metadata:
+# Save a multi-layered application with dependencies
+docker save -o my-full-stack.tar my-frontend:latest my-backend:latest my-db:latest
+# Compressing large images (can reduce size by 50-70%)
+docker save my-large-app:latest | gzip > my-large-app.tar.gz
+# Loading compressed images
+gunzip -c my-large-app.tar.gz | docker load
+Understanding what happens internally:
+1. `docker save` serializes:
+   - All image layers (as individual tar files)
+   - Image metadata (config.json)
+   - Layer relationships (manifest.json)
+   - Tag information
+
+2. `docker load` deserializes this exact same structure, preserving all layer relationships and sharing.
+
+### When to Use Save/Load vs Push/Pull
+# Check image size before transfer
+docker images --format "{{.Repository}}:{{.Tag}}: {{.Size}}" | grep my-app
+
+- Use save/load for:
+  - Air-gapped environments without internet
+  - Very large images when bandwidth is limited
+  - Testing environments where registry access is restricted
+- Use push/pull for:
+  - Normal deployment workflows
+  - CI/CD pipelines
+  - Team collaboration
+
+## 3. Pushing Images to Registries
+When pushing images, Docker's CLI breaks the process into distinct operations:
+# Login to Docker Hub (interactive)
+docker login
+# Login to Docker Hub (non-interactive for automation)
+echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+# Login to private registry
+docker login registry.example.com:5000
+Behind the scenes, pushing an image:
+1. Calculates which layers need to be uploaded
+2. Checks which layers already exist in the registry
+3. Uploads only missing layers (bandwidth optimization)
+4. Updates the registry's manifest to include the new tag
+
+### Working with Different Registry Types
+# Docker Hub (public)
+docker push username/my-app:1.0.0
+docker tag my-app:1.0.1 farajassulai/my-app:1.0.1
+docker push farajassulai/my-app:1.0.1
+# Private registry
+docker push registry.example.com:5000/team/my-app:1.0.0
+# AWS ECR
+docker push 012345678910.dkr.ecr.region.amazonaws.com/my-app:latest
+# GitHub Container Registry
+docker push ghcr.io/username/my-app:latest
+Registry credentials are stored in:
+- `~/.docker/config.json` (default location)
+- Credential helpers for more secure storage
+### Managing Image Access Control
+# Make repository private on Docker Hub
+docker push username/my-private-app:1.0.0
+# Then configure via Docker Hub UI
+# Pull private images (after proper authentication)
+docker pull username/my-private-app:1.0.0
+
+## ✅ Hands-on Demo: Image Tagging Workflow
+
+# 1. Pull the base image
+docker pull nginx:1.23
+
+# 2. Create multiple tags for different purposes
+docker tag nginx:1.23 my-website:dev
+docker tag nginx:1.23 my-website:1.23.0-base
+
+# 3. Verify tags point to the same image ID
+docker images --format "{{.ID}}: {{.Repository}}:{{.Tag}}" | grep $(docker images nginx:1.23 -q)
+
+# 4. Save the tagged images to a tarball with compression
+docker save my-website:dev my-website:1.23.0-base | gzip > my-website-images.tar.gz
+
+# 5. Remove the images to simulate transfer to another system
+docker rmi my-website:dev my-website:1.23.0-base nginx:1.23
+
+# 6. Verify images are gone
+docker images | grep -E "nginx|my-website"
+
+# 7. Load the images back
+gunzip -c my-website-images.tar.gz | docker load
+
+# 8. Verify images are restored with proper tags
+docker images | grep my-website
+
+## ✅ Mini Project: Multi-Environment Image Management
+
+# 1. Create a more realistic Python application
+mkdir -p docker-lesson-project/src
+cd docker-lesson-project
+# Create a simple Flask application
+cat > src/app.py << EOF
+from flask import Flask
+import os
+app = Flask(__name__)
+env = os.environ.get('ENVIRONMENT', 'development')
+@app.route('/')
+def hello():
+    return f"Hello from Docker Lesson 4! Running in {env} environment."
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=5000)
+EOF
+
+# Create a requirements.txt
+cat > requirements.txt << EOF
+flask==3.1.0 
+EOF
+
+# Create a Dockerfile with proper practices
+cat > Dockerfile << EOF
+# Equivalent docker CLI command: 
+# docker pull python:3.9-slim
+FROM python:3.9-slim
+
+# Set environment variables to avoid writing bytecode and to disable buffering
+# Also, set the environment to production
+# Equivalent docker CLI command:
+# docker build --build-arg PYTHONDONTWRITEBYTECODE=1 --build-arg PYTHONUNBUFFERED=1 --build-arg ENVIRONMENT=production .
+ENV PYTHONDONTWRITEBYTECODE=1 \  # Prevent Python from writing .pyc files to disk
+    PYTHONUNBUFFERED=1 \          # Disable output buffering
+    ENVIRONMENT=production        # Set environment variable for the app's environment
+
+# Create a non-root user for security purposes
+# Equivalent docker CLI command:
+# docker run --user root --rm -it python:3.9-slim bash -c "useradd -m appuser"
+RUN useradd -m appuser           # Create a user named "appuser" with a home directory
+
+# Create and set the working directory inside the container
+# Equivalent docker CLI command:
+# docker run --rm -it -w /app python:3.9-slim bash
+WORKDIR /app                     # Set the working directory to /app
+
+# Install dependencies first to leverage Docker layer caching
+# Equivalent docker CLI command:
+# docker cp requirements.txt <container_id>:/app/
+# docker exec -it <container_id> pip install --no-cache-dir -r /app/requirements.txt
+COPY requirements.txt .          # Copy the requirements file to the container
+RUN pip install --no-cache-dir -r requirements.txt  # Install dependencies using pip without cache
+
+# Copy the application code into the container
+# Equivalent docker CLI command:
+# docker cp src/ <container_id>:/app/src/
+COPY src/ ./src/                 # Copy the source code from the host machine to the container
+
+# Switch to a non-root user to run the application (for security)
+# Equivalent docker CLI command:
+# docker exec -u appuser -it <container_id> bash
+USER appuser                     # Set the user to "appuser" for running the app
+
+# Command to run the application (entry point of the container)
+# Equivalent docker CLI command:
+# docker run --rm python:3.9-slim python src/app.py
+CMD ["python", "src/app.py"]     # Run the application (app.py)
+
+# Expose the port that the application will listen on
+# Equivalent docker CLI command:
+# docker run -p 5000:5000 <container_id>
+EXPOSE 5000                       # Expose port 5000 for the application to communicate
+EOF
+
+# 2. Build the base image
+docker build -t myapp:latest .
+# 3. Tag for different environments with a version
+VERSION="1.0.0"
+COMMIT_ID=$(date +%s) # Simulating a git commit hash
+docker tag myapp:latest myapp:$VERSION
+docker tag myapp:latest myapp:$VERSION-dev
+docker tag myapp:latest myapp:$VERSION-staging
+docker tag myapp:latest myapp:$VERSION-$COMMIT_ID
+# 4. Save the development version for transfer
+docker save -o myapp-dev.tar myapp:$VERSION-dev
+# 5. Tag for Docker Hub with your username
+docker tag myapp:$VERSION farajassulai/myapp:$VERSION
+docker tag myapp:$VERSION-staging farajassulai/myapp:staging
+# 6. Print out all the created tags
+echo "Created the following tags:"
+docker images --format "{{.Repository}}:{{.Tag}}" | grep myapp
+# 7. Run containers with environment-specific settings
+docker run -d -p 5001:5000 -e ENVIRONMENT=development --name myapp-dev myapp:$VERSION-dev
+docker run -d -p 5002:5000 -e ENVIRONMENT=staging --name myapp-staging myapp:$VERSION-staging
+docker run -d -p 5003:5000 -e ENVIRONMENT=production --name myapp-prod myapp:$VERSION
+echo "Your application is running on:"
+echo "Development: http://localhost:5001"
+echo "Staging: http://localhost:5002"
+echo "Production: http://localhost:5003"
+
+
+
+

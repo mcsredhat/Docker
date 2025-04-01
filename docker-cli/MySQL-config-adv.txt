@@ -1,0 +1,162 @@
+#!/bin/bash
+
+# ============================
+# MySQL Docker Container Deployment with Enhanced Networking
+# ============================
+# This script sets up a secure MySQL container with an optimized network
+# to communicate with Nginx and API containers efficiently.
+# ============================
+
+# Step 1: Check if Docker is installed, exit if not found
+echo "Checking if Docker is installed..."
+if ! command -v docker &> /dev/null; then
+    echo "Error: Docker is not installed. Please install Docker before proceeding."
+    exit 1
+fi
+
+# Step 2: Create necessary directories for MySQL data, config, logs, backups, certificates, and initialization scripts
+echo "Setting up MySQL directory structure..."
+mkdir -p /opt/mysql/data /opt/mysql/config /opt/mysql/logs /opt/mysql/backups /opt/mysql/certs /opt/mysql/initdb.d
+
+# Step 3: Set appropriate permissions to secure MySQL directories
+echo "Applying security permissions..."
+chmod 750 /opt/mysql/data /opt/mysql/config /opt/mysql/logs /opt/mysql/backups /opt/mysql/certs /opt/mysql/initdb.d
+
+# Step 4: Create a custom Docker network for communication between MySQL, Nginx, and API
+echo "Creating a secure custom Docker network (app-network) if not already present..."
+docker network inspect app-network &> /dev/null || \
+    docker network create \
+    --driver bridge \  # Use bridge mode for internal container communication
+    --subnet 192.168.100.0/24 \  # Define subnet for predictable IP allocation
+    --gateway 192.168.100.1 \  # Assign a gateway for the network
+    app-network
+
+# Function to generate secure random passwords for MySQL
+generate_secure_secrets() {
+    echo "Generating secure MySQL passwords..."
+    ROOT_PASSWORD=$(openssl rand -base64 24)
+    USER_PASSWORD=$(openssl rand -base64 24)
+
+    # Ensure secrets directory exists and store generated passwords securely
+    mkdir -p /run/secrets
+    echo "$ROOT_PASSWORD" > /run/secrets/mysql_root_password
+    echo "$USER_PASSWORD" > /run/secrets/mysql_user_password
+
+    # Secure file permissions for secrets
+    chmod 600 /run/secrets/mysql_root_password /run/secrets/mysql_user_password
+}
+
+# Function to create MySQL configuration file with optimized settings
+create_mysql_config() {
+    echo "Creating MySQL configuration file..."
+    cat > /opt/mysql/config/my.cnf <<EOL
+[mysqld]
+# Performance Optimization
+innodb_buffer_pool_size = 512M
+max_connections = 200
+query_cache_type = 0
+
+# Security Hardening
+local_infile = 0
+secure_file_priv = /tmp
+skip_symbolic_links = 1
+
+# Logging Configurations
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow-query.log
+long_query_time = 2
+
+# Timezone Settings
+default-time-zone = '+00:00'
+EOL
+}
+
+# Function to deploy MySQL container with enhanced security and performance settings
+deploy_mysql() {
+    echo "Deploying MySQL container with secure configuration..."
+
+    # Generate secrets and configuration before deployment
+    generate_secure_secrets
+    create_mysql_config
+
+    docker run -d \
+        --name mysql-db \  # Assign a unique name to the MySQL container
+        
+        # Secure Secret Management
+        --env MYSQL_ROOT_PASSWORD_FILE=/run/secrets/mysql_root_password \  # Load root password securely
+        --env MYSQL_DATABASE=app_db \  # Define the main application database
+        --env MYSQL_USER=app_user \  # Create a dedicated application user
+        --env MYSQL_PASSWORD_FILE=/run/secrets/mysql_user_password \  # Load user password securely
+        
+        # Advanced Environment Configuration
+        --env MYSQL_RANDOM_ROOT_PASSWORD=no \
+        --env MYSQL_ONETIME_PASSWORD=no \
+        --env MYSQL_INITDB_SKIP_TZINFO=yes \
+        --env TZ=UTC \
+        
+        # Enhanced Observability with Labels
+        --hostname mysql-host \  # Assign a hostname for MySQL
+        --label app=database \
+        --label version=8.0 \
+        --label environment=production \
+        --label maintainer=DevOps-Team \
+        --label backup-frequency=daily \
+        --label criticality=high \
+        
+        # Optimized Resource Management
+        --memory=512m \  # Set maximum memory limit
+        --memory-reservation=256m \  # Soft limit to optimize performance
+        --memory-swap=1g \  # Allow limited swap usage
+        --oom-kill-disable=false \  # Prevent container from being killed due to memory overuse
+        --cpus="1.5" \  # Restrict CPU usage
+        --cpu-shares=1024 \  # Define CPU priority
+        --pids-limit=200 \  # Prevent excessive process spawning
+        --memory-swappiness=30 \  # Control swapping behavior
+        
+        # Network Configuration with Static IP for Integration with API and Nginx
+        --network app-network \  # Connect MySQL to the application network
+        --publish 3306:3306 \  # Expose MySQL port for external access
+        --ip 192.168.100.10 \  # Assign a static IP for predictable access
+        
+        # Comprehensive Storage Strategy
+        --volume /opt/mysql/data:/var/lib/mysql \  # Persist database files
+        --volume /opt/mysql/config/my.cnf:/etc/mysql/my.cnf:ro \  # Use custom configuration
+        --volume /opt/mysql/initdb.d:/docker-entrypoint-initdb.d:ro \  # Mount initialization scripts
+        --volume /opt/mysql/logs:/var/log/mysql \  # Store logs for monitoring
+        --volume /opt/mysql/backups:/backup \  # Store database backups
+        --volume /opt/mysql/certs:/etc/mysql/certs:ro \  # Securely mount certificates
+        
+        # Improved User Permissions and Security
+        --user 999:999 \  # Run MySQL as a non-root user
+        --workdir /var/lib/mysql \  # Set working directory
+        
+        # Advanced Health Checks for Robustness
+        --health-cmd="mysqladmin ping -h localhost" \  # Verify MySQL service health
+        --health-interval=30s \  # Check every 30 seconds
+        --health-retries=3 \  # Allow up to 3 failures before marking unhealthy
+        --health-timeout=5s \  # Timeout for each health check
+        --health-start-period=60s \  # Initial grace period for startup
+        
+        # Enhanced Security Hardening Measures
+        --restart unless-stopped \  # Ensure automatic restart unless manually stopped
+        --read-only \  # Make filesystem read-only for extra security
+        --tmpfs /run:size=100m,mode=1777 \  # Use temporary filesystem for runtime data
+        --tmpfs /tmp:size=100m,mode=1777 \  # Use temporary filesystem for temp files
+        --security-opt=no-new-privileges:true \  # Prevent privilege escalation
+        --cap-drop=ALL \  # Remove unnecessary privileges
+        --cap-add=NET_BIND_SERVICE \  # Allow network binding capability
+        --security-opt seccomp=/opt/mysql/mysql-seccomp-profile.json \  # Apply security policies
+        
+        # Performance and Logging Optimization
+        --ulimit nofile=65535:65535 \  # Increase max open file descriptors
+        --stop-timeout=30s \  # Ensure graceful shutdown
+
+        mysql:8.0-oracle  # Use official MySQL 8.0 Oracle image
+
+    echo "MySQL container deployed successfully!"
+}
+
+# Execute MySQL deployment function
+deploy_mysql
+
+echo "✅ MySQL is now running on app-network with Nginx and API connectivity!"

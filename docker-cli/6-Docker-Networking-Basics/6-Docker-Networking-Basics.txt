@@ -1,0 +1,483 @@
+# Docker Networking Fundamentals
+## Introduction to Docker Networking
+Docker networking enables communication between containers and with the outside world. Understanding networking concepts is essential for building multi-container applications and microservices architectures.
+## Learning Objectives
+By the end of this lesson, you will be able to:
+- Understand Docker's network types and their purposes
+- Create and manage custom Docker networks
+- Connect containers to networks and enable inter-container communication
+- Inspect and troubleshoot network configurations
+- Implement networking in practical multi-container scenarios
+
+## 1. Docker Network Types
+Docker provides several built-in network drivers to accommodate different use cases:
+| Network Type | Description                                                                 | Use Case |
+|--------------|-----------------------------------------------------------------------------|----------|
+| **bridge**   | Default network driver that creates a private internal network on the host  | Standalone containers that need to communicate |
+| **host**     | Removes network isolation between container and host                        | Performance-critical applications that need host network stack |
+| **none**     | Disables all networking                                                     | Containers that don't need network access |
+| **overlay**  | Connects multiple Docker daemons across hosts                               | Swarm services across multiple Docker hosts |
+| **macvlan**  | Assigns MAC addresses to containers, making them appear as physical devices | Applications that need to connect to physical network directly |
+
+## 2. Managing Docker Networks
+### 2.1 Listing Networks
+**Purpose**: View all available networks on your Docker host.
+**Syntax**: 
+docker network ls [OPTIONS]
+**Common Options**:
+- `--filter` or `-f`: Filter output based on conditions
+- `--quiet` or `-q`: Only display network IDs
+- `--no-trunc`: Don't truncate the output
+**Example**:
+docker network ls
+**Key Notes**:
+- The three default networks (`bridge`, `host`, `none`) are created automatically when Docker is installed
+- New containers connect to the `bridge` network by default unless specified otherwise
+
+### 2.2 Creating a Custom Network
+**Purpose**: Create a user-defined network for container isolation and enhanced communication features.
+**Syntax**: 
+docker network create [OPTIONS] <NETWORK-NAME>
+**Common Options**:
+- `--driver` or `-d`: Network driver to use (default: `bridge`)
+- `--subnet`: Specify subnet in CIDR format (e.g., `192.168.0.0/24`)
+- `--gateway`: Specify the gateway for the subnet
+- `--ip-range`: Specify a range of IPs from the subnet (e.g., `192.168.0.0/28`)
+**Example**:
+# Create a basic bridge network
+docker network create app-network
+# Create a network with custom subnet
+docker network create --subnet=172.20.0.0/16 --gateway=172.20.0.1 custom-subnet-network
+**Verification**:
+docker network ls
+docker network inspect app-network
+
+**Key Benefits of Custom Networks**:
+- Built-in DNS resolution: Containers can communicate using container names
+- Improved isolation: Containers on different networks cannot communicate directly
+- Better security: Fine-grained control over container connectivity
+- Custom IP addressing: Ability to define specific subnets and IP ranges
+
+### 2.3 Removing a Network
+**Purpose**: Delete a user-defined network that is no longer needed.
+**Syntax**: 
+docker network rm <NETWORK-NAME> [NETWORK-NAME...]
+**Example**:
+docker network rm app-network
+**Note**: You cannot remove networks that have containers attached to them. Disconnect all containers first.
+
+## 3. Container Network Operations
+### 3.1 Connecting Containers to Networks
+**Purpose**: Add a container to a specific network to enable communication with other containers on that network.
+**Syntax for Existing Containers**: 
+docker network connect <NETWORK-NAME> <CONTAINER-NAME>
+**Syntax for New Containers**:
+docker run --network=<NETWORK-NAME> <IMAGE>
+**Examples**:
+# Connect existing container to a network
+docker network connect app-network web-container
+# Start a new container on a specific network
+docker run -d --name api-service --network=app-network my-api-image
+**Multi-Network Connection**:
+A container can connect to multiple networks simultaneously:
+docker network connect frontend-net web-container
+docker network connect backend-net web-container
+
+### 3.2 Disconnecting Containers from Networks
+**Purpose**: Remove a container from a specific network.
+**Syntax**: 
+docker network disconnect <NETWORK-NAME> <CONTAINER-NAME>
+**Example**:
+docker network disconnect app-network web-container
+
+### 3.3 Inspecting Network Details
+**Purpose**: View detailed information about a network's configuration and connected containers.
+**Syntax**: 
+docker network inspect <NETWORK-NAME>
+**Example**:
+docker network inspect app-network
+
+**Filtering Output**:
+You can extract specific information using the `--format` option:
+# Get only the subnet information
+docker network inspect --format='{{range .IPAM.Config}}{{.Subnet}}{{end}}' app-network
+
+# List all containers in the network
+docker network inspect --format='{{range .Containers}}{{.Name}} {{.IPv4Address}}{{println}}{{end}}' app-network
+
+## 4. Practical Networking Examples
+### 4.1 Basic Network Setup
+**Goal**: Create a custom network and verify container communication.
+# Create a custom network
+docker network create demo-net
+# Run an Nginx container on the network
+docker run -d --name web-server --network demo-net nginx:latest
+# Run an interactive Alpine container on the same network
+docker run -it --name client --network demo-net alpine sh
+# From inside the Alpine container, test connectivity to the web server
+# (Note: You'll be in the Alpine shell after the previous command)
+ping -c 4 web-server
+wget -O- http://web-server
+exit
+# Cleanup
+docker stop web-server client
+docker rm web-server client
+docker network rm demo-net
+
+### 4.2 Multi-Tier Application Setup
+**Goal**: Create a three-tier application with frontend, backend, and database services on different networks for security.
+# Create frontend and backend networks
+docker network create frontend-net
+docker network create backend-net
+
+# Start a database container on the backend network
+docker run -d --name database \
+  --network backend-net \
+  -e POSTGRES_PASSWORD=mysecretpassword \
+  postgres:latest
+# Start an API container connected to both networks
+docker run -d --name api-service \
+  --network backend-net \
+  my-api-image
+# Connect the API to the frontend network as well
+docker network connect frontend-net api-service
+# Start a web frontend container on the frontend network
+docker run -d --name web-frontend \
+  --network frontend-net \
+  -p 80:80 \
+  my-frontend-image
+# Inspect the networks to verify connections
+docker network inspect frontend-net
+docker network inspect backend-net
+# Test the setup (frontend can reach API, API can reach database, but frontend cannot reach database directly)
+
+## 5. Port Mapping
+While not strictly part of network creation, port mapping is essential for enabling communication between containers and the host system or external networks.
+**Purpose**: Expose container ports to the host system or external network.
+**Syntax**: 
+docker run -p <HOST_PORT>:<CONTAINER_PORT> <IMAGE>
+**Examples**:
+# Map container port 80 to host port 8080
+docker run -d --name web -p 8080:80 nginx:latest
+# Map container port 3000 to a random host port
+docker run -d --name app -P my-app-image
+**Viewing Port Mappings**:
+docker port web
+
+## 6. Network Troubleshooting
+### 6.1 Common Commands for Troubleshooting
+# Check which network a container is connected to
+docker inspect --format='{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' <container>
+
+# Get the IP address of a container
+docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' <container>
+
+# Test connectivity between containers
+docker exec <container> ping -c 4 <target-container>
+
+# Check network interface details inside a container
+docker exec <container> ip addr
+
+# Trace network route from a container
+docker exec <container> traceroute <destination>
+
+# Monitor network traffic in a container
+docker exec <container> tcpdump -i eth0
+
+### 6.2 Common Issues and Solutions
+
+| Issue                                   |                              Possible Cause                 | Solution |
+|-----------------------------------------|-------------------------------------------------------------|----------------------|
+| Containers can't communicate by name    | Using default bridge network                                | Use custom bridge networks for DNS resolution |
+| No internet access from container       | DNS configuration issue                                     | Check DNS settings or add `--dns` option |
+| Port conflicts                          | Multiple services using same port                           | Change host port mapping |
+| Network performance issues              | Bridge network overhead                                     | Consider using `host` network for performance-critical apps |
+| Container can't reach external services | Firewall rules                                              | Check host firewall settings |
+
+## 7. Advanced Networking Concepts
+### 7.1 Overlay Networks (Swarm Mode)
+**Purpose**: Enable communication between containers across multiple Docker hosts.
+**Prerequisites**: Docker Swarm mode initialized.
+**Creating an Overlay Network**:
+docker network create --driver overlay --attachable multi-host-net
+
+### 7.2 Network Plugins
+Docker supports third-party network plugins for specialized networking requirements:
+- **Weave Net**: Multi-host networking solution
+- **Calico**: Network policy enforcement
+- **Cilium**: eBPF-based networking and security
+**Example**:
+# Install the plugin first, then:
+docker network create --driver weave mynet
+
+## 8. Security Best Practices
+- Use custom networks to isolate container groups
+- Implement least privilege principle for network access
+- Consider using network policies for fine-grained control
+- Regularly audit network configurations
+- Avoid exposing unnecessary ports
+- Use encrypted overlay networks for multi-host communications
+
+
+# Docker Projects with Persistent Storage and Networking
+
+## Project 1: SQLite Database with Persistent Storage
+
+### Goal
+Deploy a SQLite database in a container with persistent storage using a volume, ensuring data survives container restarts.
+
+### Directory Structure
+```
+sqlite_project/
+│── Dockerfile
+│── init.sql
+│── .env
+│── docker-compose.yml
+```
+
+### Dockerfile
+```dockerfile
+FROM nouchka/sqlite3:latest
+WORKDIR /data
+COPY init.sql /data/
+CMD ["sqlite3", "/data/mydb.db"]
+```
+
+### init.sql File
+```sql
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+INSERT INTO users (id, name) VALUES (1, 'Alice');
+```
+
+### .env File
+```env
+DB_FILE=/data/mydb.db
+```
+
+### Steps
+1. **Create a Volume:**
+   ```sh
+   docker volume create db-volume
+   ```
+2. **Build and Run SQLite Container:**
+   ```sh
+   docker compose up -d
+   ```
+
+### docker-compose.yml
+```yaml
+version: '3.8'
+services:
+  sqlite:
+    build: .
+    container_name: sqlite-demo
+    volumes:
+      - db-volume:/data
+    env_file:
+      - .env
+    command: ["sqlite3", "$DB_FILE"]
+    networks:
+      - app-network
+
+volumes:
+  db-volume:
+
+networks:
+  app-network:
+```
+
+---
+
+## Project 2: MySQL Database with Persistent Storage
+
+### Goal
+Deploy a MySQL database with persistent data and network connectivity.
+
+### Directory Structure
+```
+mysql_project/
+│── Dockerfile
+│── .env
+│── docker-compose.yml
+```
+
+### Dockerfile
+```dockerfile
+FROM mysql:8
+ENV MYSQL_ROOT_PASSWORD=rootpass
+ENV MYSQL_DATABASE=mydb
+COPY .env /etc/environment
+CMD ["mysqld"]
+```
+
+### .env File
+```env
+MYSQL_ROOT_PASSWORD=rootpass
+MYSQL_DATABASE=mydb
+```
+
+### docker-compose.yml
+```yaml
+version: '3.8'
+services:
+  mysql:
+    build: .
+    container_name: mysql-demo
+    volumes:
+      - mysql-data:/var/lib/mysql
+    env_file:
+      - .env
+    ports:
+      - "3306:3306"
+    networks:
+      - app-network
+
+volumes:
+  mysql-data:
+
+networks:
+  app-network:
+```
+
+### Steps
+1. **Create and Start MySQL Container:**
+   ```sh
+   docker compose up -d
+   ```
+2. **Add Data:**
+   ```sh
+   docker exec -it mysql-demo mysql -uroot -prootpass -e "CREATE TABLE test (id INT, value VARCHAR(20)); INSERT INTO test VALUES (1, 'Docker');"
+   ```
+3. **Verify Persistence:**
+   ```sh
+   docker compose down
+   docker compose up -d
+   docker exec mysql-demo mysql -uroot -prootpass -e "SELECT * FROM mydb.test;"
+   ```
+
+---
+
+## Project 3: Web Application with Networking and User Uploads
+
+### Goal
+Deploy a web application with persistent storage for user uploads and networking for communication.
+
+### Directory Structure
+```
+webapp/
+│── Dockerfile
+│── docker-compose.yml
+```
+
+### Dockerfile
+```dockerfile
+FROM nginx:latest
+WORKDIR /app
+VOLUME /app/uploads
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+### docker-compose.yml
+```yaml
+version: '3.8'
+services:
+  webapp:
+    build: .
+    container_name: my-webapp
+    volumes:
+      - webapp-uploads:/app/uploads
+    ports:
+      - "8080:80"
+    networks:
+      - app-network
+
+volumes:
+  webapp-uploads:
+
+networks:
+  app-network:
+```
+
+### Steps
+1. **Create and Start Web Application:**
+   ```sh
+   docker compose up -d
+   ```
+2. **Upgrade Without Losing Data:**
+   ```sh
+   docker compose down
+   docker pull nginx:latest
+   docker compose up -d
+   ```
+
+---
+
+## Project 4: WordPress with Persistent Content and Networking
+
+### Goal
+Deploy WordPress with persistent database and content, and enable networking.
+
+### Directory Structure
+```
+wordpress_project/
+│── docker-compose.yml
+│── .env
+```
+
+### .env File
+```env
+MYSQL_ROOT_PASSWORD=password
+MYSQL_DATABASE=wordpress
+```
+
+### docker-compose.yml
+```yaml
+version: '3.8'
+services:
+  db:
+    image: mysql:5.7
+    container_name: wordpress-db
+    restart: always
+    volumes:
+      - wordpress-db:/var/lib/mysql
+    env_file:
+      - .env
+    networks:
+      - app-network
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    volumes:
+      - wordpress-content:/var/www/html/wp-content
+    networks:
+      - app-network
+
+volumes:
+  wordpress-db:
+  wordpress-content:
+
+networks:
+  app-network:
+```
+
+### Steps
+1. **Start WordPress and MySQL:**
+   ```sh
+   docker compose up -d
+   ```
+2. **Access WordPress:**
+   Open [http://localhost:8080](http://localhost:8080) in your browser and complete the setup.
+3. **Cleanup:**
+   ```sh
+   docker compose down -v
+   ```
+
+

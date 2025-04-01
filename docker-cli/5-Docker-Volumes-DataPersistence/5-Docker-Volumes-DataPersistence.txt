@@ -1,0 +1,506 @@
+# Lesson 5: Docker Volumes & Data Persistence
+## Introduction: Why Data Persistence Matters in Docker
+Containers are designed to be ephemeral—they can be created, destroyed, and replaced at any moment. This presents a fundamental challenge: when a container is removed, all data inside it is lost. For applications like databases, content management systems, or anything that generates important data, this impermanence becomes a critical issue.
+Docker volumes solve this problem by providing a way to store and access data outside the container lifecycle. Think of volumes as external hard drives for your containers—they connect to containers when needed but exist independently. This separation ensures that:
+1. Your data survives container restarts, crashes, or updates
+2. Data can be shared between multiple containers
+3. Performance is optimized for I/O-intensive applications
+4. Backups become easier to manage
+Understanding Docker volumes is essential for running stateful applications in containerized environments, where data persistence is a requirement rather than an option.
+## 1. Creating a Volume (`docker volume create`)
+**Purpose**: Creates a named volume for storing persistent data outside of a container's filesystem.
+**Syntax**: 
+docker volume create <volume-name>
+**Parameters**:
+- `<volume-name>`: Custom name for the volume (e.g., `my-data`).
+**How It Works**: Allocates a managed storage area on the host (typically in `/var/lib/docker/volumes`), controlled by Docker.
+**Example**:
+docker volume create my-volume
+# Creates a volume named "my-volume"
+**Verify**:
+docker volume ls
+**Notes**:
+- Volumes persist until explicitly removed, unlike container filesystems.
+- By default, volumes use the local driver, which stores data on the host machine.
+
+## 2. Mounting Volumes in Containers (`docker run -v`)
+**Purpose**: Attaches a volume to a container, mapping it to a directory inside the container for persistent storage.
+**Syntax**: 
+docker run -v <volume-name>:<container-path> [options] <image>
+**Parameters**:
+- `-v` or `--volume`: Specifies the volume and mount point.
+- `<volume-name>`: Name of the volume (e.g., `my-volume`).
+- `<container-path>`: Path inside the container (e.g., `/data`).
+**How It Works**: Data written to the mounted path is stored in the volume, surviving container restarts or removal.
+**Example**:
+docker run -d -v my-volume:/data --name vol-test busybox
+# Mounts my-volume to /data in a BusyBox container
+**Test Persistence**:
+# Create a file in the volume
+docker exec vol-test sh -c "echo 'Persistent data' > /data/test.txt"
+# Stop and remove the container
+docker stop vol-test
+docker rm vol-test
+# Create a new container with the same volume and read the file
+docker run -v my-volume:/data busybox cat /data/test.txt
+# Output: Persistent data
+**Notes**:
+- You can use `-v` with a full path (e.g., `/host/path:/container/path`) for bind mounts, but named volumes are preferred for portability.
+- Multiple containers can mount the same volume simultaneously (be careful with concurrent writes).
+
+## 3. Inspecting and Managing Volumes (`docker volume inspect`)
+**Purpose**: Provides detailed information about a volume, such as its location on the host.
+
+**Syntax**: 
+docker volume inspect <volume-name>
+**Parameters**:
+- `<volume-name>`: Name of the volume to inspect.
+**Key Information**:
+- **Name**: Volume name.
+- **Driver**: Storage driver (usually local).
+- **Mountpoint**: Host path (e.g., `/var/lib/docker/volumes/my-volume/_data`).
+**Example**:
+docker volume inspect my-volume
+
+**Sample Output**:
+```json
+[
+    {
+        "CreatedAt": "2025-03-01T10:00:00Z",
+        "Driver": "local",
+        "Mountpoint": "/var/lib/docker/volumes/my-volume/_data",
+        "Name": "my-volume",
+        "Options": {},
+        "Scope": "local"
+    }
+]
+```
+
+**Notes**:
+- Use `sudo ls -l <mountpoint>` on the host to see stored data (requires root access).
+- The mountpoint location depends on your Docker setup and OS.
+
+## 4. Removing Volumes (`docker volume rm`)
+**Purpose**: Deletes a volume and its data from the system.
+**Syntax**: 
+docker volume rm <volume-name>
+**Parameters**:
+- `<volume-name>`: Name of the volume to remove.
+**Prerequisites**: Volume must not be in use by any container (running or stopped).
+**Example**:
+docker volume rm my-volume
+# Removes my-volume
+**Force Removal**:
+docker volume rm -f my-volume
+# Removes even if in use (stops containers first if needed)
+**Clean Up Unused Volumes**:
+docker volume prune 
+# Removes all unused volumes
+**Notes**:
+- Data is lost upon removal—back up critical data first.
+- Always verify you're removing the correct volume, especially in production environments.
+
+## 5. Troubleshooting Docker Volumes
+### Common Issue: Volume Not Mounting
+**Symptom**: Container starts but cannot access data in the expected location.
+**Possible Causes**:
+- Volume name typo in the `docker run` command
+- Container path doesn't match the expected application path
+- Permission issues within the container
+**Solution**: 
+- Verify volume name with `docker volume ls`
+- Check container path in application documentation
+- Ensure appropriate permissions
+### Common Issue: Volume Permissions
+**Symptom**: Container fails to write to mounted volume.
+**Possible Causes**:
+- UID/GID mismatch between container process and volume
+- SELinux or AppArmor restrictions (on Linux hosts)
+**Solution**: 
+# Set appropriate permissions on host
+docker run --rm -v my-volume:/data busybox chown -R 1000:1000 /data
+# Or run container with matching user
+docker run -v my-volume:/data -u 1000:1000 myapp
+### Common Issue: Cannot Delete Volume
+**Symptom**: `docker volume rm` fails with "volume in use" message.
+**Possible Causes**: 
+- Volume still mounted by running or stopped container
+- Multiple containers using the same volume
+**Solution**: 
+# Find containers using the volume
+docker ps -a --filter volume=my-volume
+
+# Remove those containers first
+docker rm -f $(docker ps -a --filter volume=my-volume -q)
+
+# Then remove the volume
+docker volume rm my-volume
+
+### Common Issue: Volume Data Corruption
+**Symptom**: Application reports data corruption.
+**Possible Causes**:
+- Unexpected container termination during write operations
+- Multiple containers writing to the same volume concurrently
+
+**Solution**: 
+- Use database clustering for concurrent access
+- Implement proper application shutdown handling
+- Consider using volume backup strategies
+
+## 6. Understanding Volume Drivers
+Docker volumes support different storage backends through drivers. The default is the `local` driver, but others provide advanced features:
+### Local Driver
+- **Use case**: Single-host deployments
+- **Benefits**: Simplicity, no additional setup
+- **Limitations**: Cannot be shared between Docker hosts
+- **Example**: `docker volume create --driver local my-volume`
+### NFS Driver
+- **Use case**: Multi-host deployments with shared storage
+- **Benefits**: Volumes accessible from multiple Docker hosts
+- **Example**:
+  docker volume create --driver local \
+    --opt type=nfs \
+    --opt o=addr=192.168.1.100,rw \
+    --opt device=:/path/to/dir \
+    nfs-volume
+ 
+### AWS EBS/EFS Drivers
+- **Use case**: Cloud-native applications on AWS
+- **Benefits**: Managed storage with backups and scaling
+- **Example**:
+  # Install the plugin first
+  docker plugin install --grant-all-permissions rexray/ebs
+  
+  # Create an EBS volume
+  docker volume create --driver rexray/ebs \
+    --opt size=10 \
+    --name aws-storage
+
+### When to Use Different Drivers
+- Use `local` for single-host deployments and development
+- Use network-based drivers (NFS, CIFS) for multi-host setups
+- Use cloud provider drivers (AWS, Azure, GCP) for cloud-native applications
+- Use specialized drivers for specific needs (snapshots, encryption)
+
+## 7. Volume Security Best Practices
+### Access Control
+- Restrict host access to volume directories (typically in `/var/lib/docker/volumes`)
+- Use Docker's user namespace mapping to control container access to volumes
+- Consider SELinux or AppArmor profiles for additional protection
+- Example: 
+  # Run container with non-root user
+  docker run -v my-volume:/data -u 1000:1000 --name secure-app my-image
+
+### Sensitive Data
+- Avoid storing credentials, keys, or certificates in regular volumes
+- Use Docker secrets for sensitive information:
+  # Create a secret
+  echo "my-secret-password" | docker secret create db_password -
+  
+  # Use the secret in a service
+  docker service create \
+    --name db \
+    --secret db_password \
+    --mount type=volume,source=db-data,target=/var/lib/mysql \
+    mysql:8
+
+### Volume Encryption
+- For highly sensitive data, consider encrypted volumes:
+
+  # Create an encrypted volume using a third-party driver
+  docker volume create --driver cloudstor:aws --opt encrypted=true secure-vol
+  # Or use host-level encryption (LUKS on Linux)
+  # Mount the encrypted device to a directory
+  # Then use bind mount to container
+  docker run -v /path/to/encrypted/mount:/data secure-image
+### Audit and Monitoring
+- Regularly audit volume permissions and contents
+- Monitor volume usage and access patterns
+- Implement logging for volume-related operations
+
+## 8. Volumes vs. Bind Mounts: Choosing the Right Approach
+### Docker Volumes
+**Advantages**:
+- Managed by Docker
+- Work on all platforms (Windows, macOS, Linux) identically
+- Can be backed up and managed with Docker commands
+- Can use different storage drivers
+- Contents isolated from host system processes
+- Easier to migrate between hosts
+
+**Best for**:
+- Persistent application data (databases, user uploads)
+- Data that doesn't need to be accessed from the host
+- Production deployments
+- Multi-container data sharing
+
+### Bind Mounts
+**Advantages**:
+- Direct access to host filesystem
+- Immediate visibility of changes on host
+- Can mount any host directory
+- No need for volume creation step
+
+**Best for**:
+- Development environments (source code)
+- Configuration files
+- When host and container need to share the same files
+- When host tools need to access container data
+
+### Comparison Table
+
+| Feature | Docker Volumes | Bind Mounts |
+|---------|---------------|-------------|
+| Management | Docker managed | Host filesystem |
+| Creation | Explicit step required | Created automatically |
+| Location | `/var/lib/docker/volumes` | Anywhere on host |
+| Portability | High | Low |
+| Host interaction | Limited | Direct |
+| Performance | Optimized | Native |
+| Backup | Docker commands | Host tools |
+| Drivers | Multiple options | None |
+
+### Decision Guide
+1. Need portable, Docker-managed storage? → Use volumes
+2. Working with host files directly? → Use bind mounts
+3. Database or application state? → Use volumes
+4. Source code for development? → Use bind mounts
+5. Need snapshots or special features? → Use volumes with appropriate driver
+
+# Docker Projects with Persistent Storage
+
+## Project 1: SQLite Database with Persistent Storage
+
+### Goal
+Deploy a SQLite database in a container with persistent storage using a volume, ensuring data survives container restarts.
+
+### Directory Structure
+```
+sqlite_project/
+│── Dockerfile
+│── init.sql
+│── .env
+```
+
+### Dockerfile
+```dockerfile
+FROM nouchka/sqlite3:latest
+WORKDIR /data
+COPY init.sql /data/
+CMD ["sqlite3", "/data/mydb.db"]
+
+```
+### init.sql File
+```sql
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+INSERT INTO users (id, name) VALUES (1, 'Alice');
+```
+### .env File
+```env
+DB_FILE=/data/mydb.db
+```
+
+### Steps
+1. **Create a Volume:**
+   ```sh
+   docker volume create db-volume
+   ```
+2. **Build and Run SQLite Container:**
+   ```sh
+   docker build -t sqlite-demo .
+   docker compose up -d
+   ```
+
+### docker-compose.yml
+```yaml
+version: '3.8'
+services:
+  sqlite:
+    build: .
+    container_name: sqlite-demo
+    volumes:
+      - db-volume:/data
+    env_file:
+      - .env
+    command: ["sqlite3", "$DB_FILE"]
+
+volumes:
+  db-volume:
+```
+
+---
+
+## Project 2: MySQL Database with Persistent Storage
+
+### Goal
+Deploy a MySQL database with persistent data.
+
+### Directory Structure
+```
+mysql_project/
+│── Dockerfile
+│── .env
+│── docker-compose.yml
+```
+
+### Dockerfile
+```dockerfile
+FROM mysql:8
+ENV MYSQL_ROOT_PASSWORD=rootpass
+ENV MYSQL_DATABASE=mydb
+COPY .env /etc/environment
+CMD ["mysqld"]
+```
+
+### .env File
+```env
+MYSQL_ROOT_PASSWORD=rootpass
+MYSQL_DATABASE=mydb
+```
+
+### docker-compose.yml
+```yaml
+version: '3.8'
+services:
+  mysql:
+    build: .
+    container_name: mysql-demo
+    volumes:
+      - mysql-data:/var/lib/mysql
+    env_file:
+      - .env
+    ports:
+      - "3306:3306"
+
+volumes:
+  mysql-data:
+```
+
+### Steps
+1. **Create and Start MySQL Container:**
+   ```sh
+   docker compose up -d
+   ```
+2. **Add Data:**
+   ```sh
+   docker exec -it mysql-demo mysql -uroot -prootpass -e "CREATE TABLE test (id INT, value VARCHAR(20)); INSERT INTO test VALUES (1, 'Docker');"
+   ```
+3. **Verify Persistence:**
+   ```sh
+   docker compose down
+   docker compose up -d
+   docker exec mysql-demo mysql -uroot -prootpass -e "SELECT * FROM mydb.test;"
+   ```
+
+---
+
+## Project 3: Web Application with User Uploads
+
+### Goal
+Deploy a web application with persistent storage for user uploads.
+
+### Directory Structure
+```
+webapp/
+│── Dockerfile
+│── docker-compose.yml
+```
+
+### Dockerfile
+```dockerfile
+FROM nginx:latest
+WORKDIR /app
+VOLUME /app/uploads
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+### docker-compose.yml
+```yaml
+version: '3.8'
+services:
+  webapp:
+    build: .
+    container_name: my-webapp
+    volumes:
+      - webapp-uploads:/app/uploads
+    ports:
+      - "8080:80"
+
+volumes:
+  webapp-uploads:
+```
+
+### Steps
+1. **Create and Start Web Application:**
+   ```sh
+   docker compose up -d
+   ```
+2. **Upgrade Without Losing Data:**
+   ```sh
+   docker compose down
+   docker pull nginx:latest
+   docker compose up -d
+   ```
+
+---
+
+## Project 4: WordPress with Persistent Content
+
+### Goal
+Deploy WordPress with persistent database and content.
+
+### Directory Structure
+```
+wordpress_project/
+│── docker-compose.yml
+│── .env
+```
+
+### .env File
+```env
+MYSQL_ROOT_PASSWORD=password
+MYSQL_DATABASE=wordpress
+```
+
+### docker-compose.yml
+```yaml
+version: '3.8'
+services:
+  db:
+    image: mysql:5.7
+    container_name: wordpress-db
+    restart: always
+    volumes:
+      - wordpress-db:/var/lib/mysql
+    env_file:
+      - .env
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    volumes:
+      - wordpress-content:/var/www/html/wp-content
+
+volumes:
+  wordpress-db:
+  wordpress-content:
+```
+
+### Steps
+1. **Start WordPress and MySQL:**
+   ```sh
+   docker compose up -d
+   ```
+2. **Access WordPress:**
+   Open [http://localhost:8080](http://localhost:8080) in your browser and complete the setup.
+3. **Cleanup:**
+   ```sh
+   docker compose down -v
+   ```

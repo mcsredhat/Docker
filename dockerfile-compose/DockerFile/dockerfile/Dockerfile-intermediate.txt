@@ -1,0 +1,862 @@
+Lesson 3: Environment Configuration
+
+```dockerfile
+# docker build -t myapp:latest .
+FROM node:18
+
+# docker run -e NODE_ENV=production myapp
+ENV NODE_ENV=development \
+    PORT=3000 \
+    LOG_LEVEL=info
+
+# docker run -p 8080:3000 myapp
+EXPOSE 3000
+
+# docker run --entrypoint "/bin/bash" myapp
+ENTRYPOINT ["node", "server.js"]
+
+# docker run myapp npm test
+CMD ["npm", "start"]
+
+# docker build --build-arg VERSION=1.2.3 -t myapp:1.2.3 .
+ARG VERSION=1.0.0
+ENV APP_VERSION=$VERSION
+
+# docker inspect --format='{{.State.Health.Status}}' container_id
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+```
+
+## Lesson 3: Environment Configuration
+
+### Setting Environment Variables (ENV)
+The `ENV` instruction sets environment variables that will persist when a container is run. These values are available to processes running in the container.
+- Can set multiple variables in one instruction
+- Common use: configuration settings like database URLs, port numbers, etc.
+- Can be overridden at runtime with `docker run -e` flag
+
+### Exposing Ports (EXPOSE)
+The `EXPOSE` instruction informs Docker that the container listens on specified network ports at runtime.
+- Does not actually publish the port - it's documentation
+- Ports must still be published with `-p` flag when running the container
+- Useful for documentation and when using automatic network linking
+
+### Understanding ENTRYPOINT vs. CMD
+Both specify what command to run when the container starts, but they work differently:
+
+**ENTRYPOINT**:
+- Defines the executable that will run when the container starts
+- Cannot be ignored (without using `--entrypoint` flag)
+- Often used for containers that act like executables
+
+**CMD**:
+- Provides default arguments for the ENTRYPOINT
+- Easily overridden by providing arguments to `docker run`
+- If used alone, specifies the command to run
+
+Best practice is often to use them together: ENTRYPOINT for the fixed command, CMD for default arguments.
+
+### Using ARG for Build-time Variables
+The `ARG` instruction defines variables available only during the build process.
+- Only available during image build (not at runtime)
+- Can be set from command line with `--build-arg`
+- Great for version numbers, GitHub tokens, etc.
+- Can be used to set ENV variables by assigning ARG to ENV
+
+### Healthchecks (HEALTHCHECK)
+The `HEALTHCHECK` instruction tells Docker how to test if the container is still working.
+- Runs a command inside the container at specified intervals
+- Reports container health status (starting, healthy, unhealthy)
+- Useful for orchestration systems to know when to restart containers
+- Parameters include interval, timeout, start period, and retries
+
+### ✅ Hands-on Demo: Use ENV and ARG in a Node.js App
+For this demo, you would typically:
+1. Create a Node.js application that reads environment variables
+2. Build a Dockerfile using ENV and ARG variables
+3. Build and run the container with different settings
+
+### ✅ Mini Project: Dockerize a Go-based API with environment variables
+For this project, you would:
+1. Create a simple Go API
+2. Configure it to use environment variables for configuration
+3. Create a Dockerfile with proper ENV settings
+4. Implement a healthcheck endpoint
+5. Build and test the containerized application
+
+Would you like more detailed examples of any of these concepts?
+Let me provide you with detailed examples for both the hands-on demo and the mini project.
+
+## Hands-on Demo: Using ENV and ARG in a Node.js App
+
+### Step 1: Create a Node.js application
+
+```javascript
+// Simple Express server that uses environment variables
+const express = require('express');
+const app = express();
+
+// Read environment variables with defaults
+const PORT = process.env.PORT || 3000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const VERSION = process.env.APP_VERSION || 'unknown';
+const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
+
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Hello Docker!',
+    environment: NODE_ENV,
+    version: VERSION,
+    logLevel: LOG_LEVEL
+  });
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
+  console.log(`App version: ${VERSION}`);
+  console.log(`Log level: ${LOG_LEVEL}`);
+});
+
+```
+
+```json
+{
+  "name": "docker-env-demo",
+  "version": "1.0.0",
+  "description": "Demo app for Docker ENV and ARG",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+
+```
+
+### Step 2: Create a Dockerfile with ENV and ARG
+
+```dockerfile
+# Start with Node.js base image
+FROM node:18-alpine
+
+# Define build arguments (only available during build)
+ARG VERSION=1.0.0
+ARG NODE_ENV=production
+
+# Set environment variables (available at runtime)
+ENV NODE_ENV=$NODE_ENV \
+    PORT=3000 \
+    LOG_LEVEL=info \
+    APP_VERSION=$VERSION
+
+# Create app directory
+WORKDIR /usr/src/app
+
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy application code
+COPY . .
+
+# Document that the container listens on port 3000
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+  CMD wget -qO- http://localhost:3000/health || exit 1
+
+# Set the startup command
+CMD ["npm", "start"]
+
+```
+
+### Step 3: Build and run commands
+
+```bash
+# Build the image with default values
+docker build -t node-env-demo:latest .
+
+# Build with custom version
+docker build --build-arg VERSION=2.1.0 -t node-env-demo:2.1.0 .
+
+# Build for development environment
+docker build --build-arg NODE_ENV=development --build-arg VERSION=dev-1.0 -t node-env-demo:dev .
+
+# Run with default environment variables
+docker run -p 8080:3000 node-env-demo:latest
+
+# Run with custom environment variables
+docker run -p 8080:3000 -e LOG_LEVEL=debug -e PORT=3000 node-env-demo:latest
+
+# Check container health
+docker inspect --format='{{.State.Health.Status}}' container_id
+
+# See environment variables in running container
+docker exec container_id env
+
+```
+
+## Mini Project: Dockerize a Go-based API with Environment Variables
+
+### Step 1: Create a simple Go API
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
+)
+
+// Config holds application configuration from environment variables
+type Config struct {
+	Port        int    `json:"port"`
+	Environment string `json:"environment"`
+	Version     string `json:"version"`
+	DbHost      string `json:"db_host"`
+}
+
+// Load configuration from environment variables with defaults
+func loadConfig() Config {
+	port, err := strconv.Atoi(getEnv("PORT", "8080"))
+	if err != nil {
+		port = 8080
+	}
+
+	return Config{
+		Port:        port,
+		Environment: getEnv("GO_ENV", "development"),
+		Version:     getEnv("APP_VERSION", "1.0.0"),
+		DbHost:      getEnv("DB_HOST", "localhost:5432"),
+	}
+}
+
+// Helper function to get environment variable with default
+func getEnv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
+func main() {
+	config := loadConfig()
+
+	// Define API routes
+	http.HandleFunc("/", rootHandler(config))
+	http.HandleFunc("/health", healthHandler)
+
+	// Start server
+	serverAddr := fmt.Sprintf(":%d", config.Port)
+	log.Printf("Starting server in %s mode on port %d", config.Environment, config.Port)
+	log.Printf("App version: %s", config.Version)
+	log.Fatal(http.ListenAndServe(serverAddr, nil))
+}
+
+// Root handler shows configuration
+func rootHandler(config Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message":     "Welcome to Go API",
+			"config":      config,
+			"server_time": time.Now(),
+		})
+	}
+}
+
+// Health check endpoint
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
+```
+
+### Step 2: Create a Dockerfile for the Go API
+
+```dockerfile
+# Build stage
+FROM golang:1.21-alpine AS builder
+
+# Build arguments
+ARG VERSION=1.0.0
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod and sum files
+COPY go.mod ./
+# Uncomment if you have a go.sum file
+# COPY go.sum ./
+# RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-X main.Version=${VERSION}" -o /go-api .
+
+# Final stage
+FROM alpine:3.19
+
+# Runtime environment variables
+ENV GO_ENV=production \
+    PORT=8080 \
+    APP_VERSION=1.0.0 \
+    DB_HOST=db:5432
+
+# Copy binary from builder stage
+COPY --from=builder /go-api /usr/local/bin/
+
+# Document that the container listens on port 8080
+EXPOSE 8080
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD wget -qO- http://localhost:8080/health || exit 1
+
+# Run the application
+ENTRYPOINT ["/usr/local/bin/go-api"]
+
+```
+
+### Step 3: Create a go.mod file
+
+```go
+module go-api
+
+go 1.21
+
+```
+
+### Step 4: Build and run commands
+
+```bash
+# Build the Go API image
+docker build -t go-api:latest .
+
+# Build with specific version
+docker build --build-arg VERSION=2.0.0 -t go-api:2.0.0 .
+
+# Run with default environment variables
+docker run -p 8080:8080 go-api:latest
+
+# Run with custom environment variables
+docker run -p 9000:8080 -e PORT=8080 -e GO_ENV=staging -e DB_HOST=staging-db:5432 go-api:latest
+
+# Run with mounted configuration file (alternative approach)
+# docker run -p 8080:8080 -v $(pwd)/config.json:/app/config.json go-api:latest
+
+# Check container health status
+docker inspect --format='{{.State.Health.Status}}' container_id
+
+# Test the API
+curl http://localhost:8080/
+curl http://localhost:8080/health
+
+```
+
+### Step 5: Docker Compose Configuration (Optional)
+
+```yaml
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      args:
+        VERSION: 1.1.0
+    ports:
+      - "8080:8080"
+    environment:
+      - GO_ENV=development
+      - PORT=8080
+      - DB_HOST=db:5432
+    depends_on:
+      - db
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  db:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=api
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  db-data:
+
+```
+
+## Key Points about ENV and ARG
+
+1. **ARG variables**:
+   - Only available during build time
+   - Set with `--build-arg` when building the image
+   - Can be used to pass values to ENV
+
+2. **ENV variables**:
+   - Available both during build and at runtime
+   - Can be overridden at runtime with `docker run -e`
+   - Persist in the final image
+   - Accessible to applications running in the container
+
+3. **Best practices**:
+   - Use ARG for build-time customization (versions, build config)
+   - Use ENV for runtime configuration (ports, database URLs, environment names)
+   - Provide sensible defaults for both
+   - Document what environment variables your container expects
+
+=========================================================
+Lesson 4: Managing Dependencies
+Installing Packages in a Dockerfile
+dockerfileCopy
+# docker build -t ubuntu-app:latest .
+FROM ubuntu:22.04
+
+# docker build --no-cache -t ubuntu-app:latest .
+# docker history ubuntu-app:latest
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    nodejs \
+    # Group packages to reduce layers 
+    && rm -rf /var/lib/apt/lists/* # Clean up to reduce image size
+
+# Alternative with Alpine
+# docker build -t alpine-app:latest -f Dockerfile.alpine .
+FROM alpine:3.19
+
+# docker image inspect alpine-app:latest
+RUN apk add --no-cache \
+    python3 \
+    nodejs \
+    npm 
+When installing packages in Docker, you typically use the RUN instruction with the appropriate package manager command. The Docker CLI command above each layer shows the related operations you might perform. Best practices include:
+
+Combining commands with && to create fewer layers
+Cleaning up package manager caches (apt or apk) to reduce image size
+Using --no-install-recommends with apt or --no-cache with apk to minimize installed packages
+====================================
+Using Multi-Stage Builds for Optimization
+dockerfileCopy
+# docker build -t react-app:multi .
+# Build stage
+FROM node:18 AS build
+
+# docker exec -it <container_id> /bin/sh -c "cd /app && ls -la"
+WORKDIR /app
+
+# docker cp package.json <container_id>:/app/
+COPY package*.json ./
+
+# docker exec -it <container_id> /bin/sh -c "cd /app && npm install"
+RUN npm install
+
+# docker cp . <container_id>:/app/
+COPY . .
+
+# docker exec -it <container_id> /bin/sh -c "cd /app && npm run build"
+RUN npm run build
+
+# Production stage
+# docker image ls | grep nginx
+FROM nginx:alpine
+
+# docker cp --from=<build_container_id>:/app/build .
+COPY --from=build /app/build /usr/share/nginx/html
+
+# docker images react-app:multi
+# Above command shows final image size is much smaller than a single-stage build
+# Final image contains only runtime files, not build tools
+Multi-stage builds separate your build environment from your runtime environment. The Docker CLI command docker build builds both stages, but the final image only includes what you explicitly copy from the builder stage. This results in significantly smaller images and improves security by removing build tools from your production container.
+================================
+Running Scripts (RUN, COPY, ADD)
+dockerfileCopy# docker build -t myapp .
+FROM node:18
+
+# docker exec -it container_id npm install
+# Creates a layer with installed dependencies
+RUN npm install
+
+# docker cp local_file.txt container_id:/app/
+# Simple file copy from local to image
+COPY ./local_file.txt /app/
+
+# docker cp archive.tar.gz container_id:/tmp/ && docker exec container_id tar -xzf /tmp/archive.tar.gz
+# ADD can extract archives automatically
+ADD archive.tar.gz /tmp/
+These three instructions are commonly used for manipulating files and running commands:
+
+RUN: Executes commands during image build, creating new layers
+COPY: Simple file transfer from build context to image
+ADD: Like COPY but with extra features (URL download, automatic extraction)
+===============================================
+Distroless Images for Security
+DockerFile
+# docker build -t go-app:distroless .
+# Build stage
+FROM golang:1.21 AS builder
+
+# docker exec -it <builder_id> /bin/bash -c "cd /app && ls -la"
+WORKDIR /app
+
+# docker cp . <builder_id>:/app/
+COPY . .
+
+# docker exec -it <builder_id> /bin/bash -c "cd /app && go build -o myapp"
+RUN go build -o myapp
+
+# Distroless runtime stage
+# docker pull gcr.io/distroless/base-debian12
+FROM gcr.io/distroless/base-debian12
+
+# docker cp --from=<builder_id>:/app/myapp .
+COPY --from=builder /app/myapp /
+
+# docker image ls go-app:distroless
+# Note: There's no shell in distroless, so can't use docker exec for debugging
+# docker run go-app:distroless /myapp
+CMD ["/myapp"]================================================================
+Hands-on Demo: Implement a Multi-Stage Build for a GoLang App
+dockerfileCopy
+# docker pull golang:1.21-alpine
+# Base image for build stage
+FROM golang:1.21-alpine AS builder
+
+# docker exec -it <builder_id> /bin/sh -c "mkdir -p /app && cd /app"
+WORKDIR /app
+
+# docker cp go.mod <builder_id>:/app/
+# Copy dependencies file first (better caching)
+COPY go.mod ./
+# COPY go.sum ./
+
+# docker exec -it <builder_id> /bin/sh -c "cd /app && go mod download"
+# RUN go mod download
+
+# docker cp *.go <builder_id>:/app/
+# Copy source code after dependencies (for better layer caching)
+COPY *.go ./
+
+# docker exec -it <builder_id> /bin/sh -c "cd /app && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /go-app"
+# Build a static binary with no debug info
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /go-app
+
+# docker pull scratch
+# Most minimal base image (essentially empty)
+FROM scratch
+
+# docker cp --from=<builder_id>:/go-app .
+# Copy just the compiled binary from builder stage
+COPY --from=builder /go-app /go-app
+
+# docker cp --from=<builder_id>:/etc/ssl/certs/ca-certificates.crt .
+# Copy SSL certificates for HTTPS support
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# docker inspect --format='{{.Config.ExposedPorts}}' go-multistage-app:latest
+# Document the port this container uses
+EXPOSE 8080
+
+# docker run go-multistage-app:latest
+# Run the binary
+ENTRYPOINT ["/go-app"]
+
+# docker images go-multistage-app:latest
+# Shows the tiny image size (a few MB)
+================================================================
+Mini Project: React App Production Container with CL
+# docker pull node:18-alpine
+# Base image for build stage
+FROM node:18-alpine AS build
+
+# docker exec -it <builder_id> /bin/sh -c "mkdir -p /app && cd /app"
+WORKDIR /app
+
+# docker cp package.json <builder_id>:/app/
+# docker cp package-lock.json <builder_id>:/app/
+# Copy dependency specs first (for better layer caching)
+COPY package.json package-lock.json ./
+
+# docker exec -it <builder_id> /bin/sh -c "cd /app && npm ci"
+# Use ci for more reliable, reproducible builds
+RUN npm ci
+
+# docker cp . <builder_id>:/app/
+# Copy source code after installing dependencies
+COPY . ./
+
+# docker exec -it <builder_id> /bin/sh -c "cd /app && npm run build"
+# Create optimized production build
+RUN npm run build
+
+# docker pull nginx:alpine
+# Lightweight web server for production stage
+FROM nginx:alpine
+
+# docker cp nginx.conf <nginx_id>:/etc/nginx/conf.d/default.conf
+# Custom nginx config for React SPA
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# docker cp --from=<builder_id>:/app/build <nginx_id>:/usr/share/nginx/html
+# Copy just the build output from build stage
+COPY --from=build /app/build /usr/share/nginx/html
+
+# docker inspect --format='{{.Config.ExposedPorts}}' react-prod:latest
+# Document the port this container uses
+EXPOSE 80
+
+# docker inspect --format='{{.State.Health.Status}}' <container_id>
+# Add health check to verify container is working
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -qO- http://localhost/ || exit 1
+
+# docker run -p 80:80 react-prod:latest
+# Start nginx in foreground mode
+CMD ["nginx", "-g", "daemon off;"]
+
+# docker images react-prod:latest
+# docker history react-prod:latest
+# Shows the optimized image size and layer composition
+
+============================
+Now let's explain the key Docker CLI commands that correspond to dependency management concepts:
+Key Docker CLI Commands for Dependency Management
+# Building images
+docker build -t app:latest .                    # Basic build
+docker build --no-cache -t app:latest .         # Force rebuild all layers
+docker build --build-arg VERSION=1.0 -t app:1.0 . # Pass build-time variables
+
+# Inspecting images and layers
+docker history app:latest                       # View all layers in an image
+docker image inspect app:latest                 # Detailed image metadata
+docker images app:latest                        # View image size
+
+# Working with multi-stage builds
+docker build --target builder -t app:build .    # Build only up to a specific stage
+docker build -t app:prod .                      # Build complete multi-stage image
+
+# Pruning and cleaning
+docker image prune                              # Remove unused images
+docker system prune -a                          # Remove all unused objects
+
+# Scanning for vulnerabilities
+docker scan app:latest                          # Scan image for security issues
+
+# Layer caching strategies
+docker build --cache-from app:previous .        # Use a specific image for caching
+
+# Running containers from images
+docker run -p 8080:80 app:latest               # Run and map ports
+docker run -e ENV=production app:latest         # Run with environment variables
+
+# Copying files between stages
+# (This happens in Dockerfile with COPY --from=stage, not direct CLI command)
+
+# Debugging
+docker exec -it <container_id> /bin/sh          # Get shell in running container
+docker logs <container_id>                      # View container logs
+
+
+==============================================================
+# Docker Volumes and Networking Explained
+
+## Persistent Storage (VOLUME)
+
+When we run containers, by default all data inside them is temporary—it disappears when the container stops. Volumes solve this problem by providing persistent storage that exists independently of containers.
+
+```bash
+# Create a named volume that persists independently of any container
+docker volume create my_data_volume
+
+# Run a container that mounts this volume - any data written to /app/data inside
+# the container will actually be stored in the volume on the host system
+docker run -v my_data_volume:/app/data nginx
+
+# Bind mount - directly maps a host directory to a container directory
+# Changes in either location will be reflected in the other
+docker run -v /home/user/project:/app/project nginx
+
+# Inspect the details of a volume to see its mountpoint on the host
+docker volume inspect my_data_volume
+
+# List all volumes on your system
+docker volume ls
+
+# Remove unused volumes to free up space
+docker volume prune
+```
+
+Think of volumes like external hard drives for your containers. The main container can come and go, but the data persists. This is essential for databases, which need to keep their data even when the container is updated or rebuilt.
+
+## Networking Between Containers (docker network)
+
+Docker creates isolated network environments for containers, but also provides ways for them to communicate with each other and the outside world.
+
+```bash
+# List all networks on your Docker host
+docker network ls
+
+# Examine the details of a specific network, including connected containers
+docker network inspect bridge
+
+# Create a user-defined network with more features than the default bridge
+docker network create my_application_network
+
+# Remove a network (only works if no containers are connected to it)
+docker network rm my_application_network
+
+# Connect a running container to an additional network
+docker network connect my_application_network my_container
+
+# Disconnect a container from a network
+docker network disconnect my_application_network my_container
+```
+
+By default, Docker gives each container an IP address on an internal network. Think of this like giving each application its own computer on a small private network, allowing controlled communication.
+
+## Custom Bridge Networks
+
+Custom bridge networks provide better isolation and communication features than the default bridge network.
+
+```bash
+# Create a custom bridge network that allows connected containers to
+# communicate using container names as hostnames
+docker network create --driver bridge my_webapp_network
+
+# Run container 1 on our custom network
+docker run --name webapp --network my_webapp_network -d nginx
+
+# Run container 2 on the same network - it can now reach container 1 
+# using the hostname "webapp"
+docker run --name database --network my_webapp_network -d mysql
+
+# You can specify subnet and IP address ranges for your network
+docker network create --subnet 172.20.0.0/16 --ip-range 172.20.10.0/24 my_custom_network
+```
+
+The key advantage of custom bridge networks is DNS resolution—containers can find each other by name rather than IP address. This is like having a network where computers can automatically discover each other by name, making connection configuration much simpler.
+
+## Overlay Networks Introduction
+
+Overlay networks extend Docker networking across multiple physical hosts, allowing containers on different machines to communicate as if they were on the same network.
+
+```bash
+# Initialize Docker Swarm mode (required for overlay networks)
+docker swarm init
+
+# Create an overlay network that spans multiple Docker hosts
+docker network create --driver overlay my_multi_host_network
+
+# Create a service that will use this overlay network
+docker service create --network my_multi_host_network --name my_distributed_app nginx
+
+# To use overlay networks in standalone containers (not services),
+# you must create them with the --attachable flag
+docker network create --driver overlay --attachable my_attachable_network
+```
+
+Overlay networks are like virtual private networks (VPNs) that connect Docker hosts. They encapsulate network traffic and route it between hosts, creating the illusion that containers across different physical machines are on the same local network.
+
+## Hands-on Demo: Connect two containers (Frontend + Backend) using Docker Networks
+
+Let's walk through a practical example of connecting a frontend web server to a backend API:
+
+```bash
+# First, create a dedicated network for our application components
+docker network create web_app_network
+
+# Start the backend API container on our network
+docker run --name api_service \
+  --network web_app_network \
+  -d \
+  node:14-alpine \
+  sh -c "echo 'const http = require(\"http\"); const server = http.createServer((req, res) => { res.setHeader(\"Content-Type\", \"application/json\"); res.end(JSON.stringify({message: \"Data from API\"}));}); server.listen(3000, () => console.log(\"API running on port 3000\"));' > server.js && node server.js"
+
+# Start the frontend container on the same network and expose it to the host
+docker run --name web_frontend \
+  --network web_app_network \
+  -p 8080:80 \
+  -d \
+  nginx:alpine
+
+# Configure the frontend to proxy API requests to our backend
+# The key point is we're using the container name 'api_service' as the hostname
+docker exec -it web_frontend sh -c "echo 'server { listen 80; location /api/ { proxy_pass http://api_service:3000/; } location / { root /usr/share/nginx/html; index index.html; } }' > /etc/nginx/conf.d/default.conf && nginx -s reload"
+
+# Create a simple HTML page that will call our API
+docker exec -it web_frontend sh -c "echo '<html><body><h1>Docker Networking Demo</h1><div id=\"result\">Loading...</div><script>fetch(\"/api/\").then(r=>r.json()).then(data=>document.getElementById(\"result\").innerText=data.message)</script></body></html>' > /usr/share/nginx/html/index.html"
+```
+
+Now you can access the frontend at http://localhost:8080, which will communicate with the backend API. The magic happens because both containers are on the same custom network, allowing the frontend to resolve and communicate with the backend using just its container name.
+
+## Mini Project: Set up a MySQL Database with persistent storage using Docker Volumes
+
+This project demonstrates both volumes for data persistence and networking for container communication:
+
+```bash
+# Create a volume to store our database files permanently
+docker volume create mysql_database_data
+
+# Create a network for database and management tool communication
+docker network create database_network
+
+# Start MySQL container with persistent storage
+# The -v flag mounts our volume to MySQL's data directory
+# The -e flags set environment variables to configure the database
+docker run --name mysql_db \
+  --network database_network \
+  -v mysql_database_data:/var/lib/mysql \
+  -e MYSQL_ROOT_PASSWORD=my_secure_password \
+  -e MYSQL_DATABASE=application_db \
+  -e MYSQL_USER=app_user \
+  -e MYSQL_PASSWORD=app_password \
+  -d \
+  mysql:8.0
+
+# Start phpMyAdmin container to manage our database through a web interface
+# We connect it to the same network so it can reach the database
+# The -p flag publishes port 8080 on the host, mapping to phpMyAdmin's port 80
+docker run --name phpmyadmin \
+  --network database_network \
+  -p 8080:80 \
+  -e PMA_HOST=mysql_db \
+  -e PMA_USER=root \
+  -e PMA_PASSWORD=my_secure_password \
+  -d \
+  phpmyadmin/phpmyadmin
+```
+
+After running these commands, you can:
+1. Access phpMyAdmin at http://localhost:8080 to manage your database
+2. Connect applications to your MySQL database 
+3. Stop, restart, or even remove and recreate the mysql_db container—your data will remain safe in the volume
+
+This setup combines both key concepts: the volume ensures data persists independently of the container lifecycle, while the custom network enables the phpMyAdmin container to communicate with the MySQL container by name rather than by IP address.

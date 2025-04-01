@@ -1,0 +1,1602 @@
+# Docker Compose - Advanced Level: Scaling & Orchestration
+
+This lesson covers essential techniques for running containerized applications at scale using Docker Compose and introduces more advanced orchestration concepts. Let's explore each topic in depth.
+
+## Running Multiple Instances (docker-compose scale)
+
+Docker Compose allows you to run multiple instances of the same service, which is particularly useful for horizontal scaling. 
+
+### How to Scale Services
+
+The traditional way to scale services is with the `docker-compose scale` command:
+
+```bash
+docker-compose scale api=3 worker=5
+```
+
+In newer versions of Docker Compose (v3+), the preferred method is:
+
+```bash
+docker-compose up --scale api=3 --scale worker=5
+```
+
+### How Scaling Works
+
+When you scale a service, Docker Compose creates multiple containers from the same service definition. Each container gets:
+
+1. A unique name (usually the service name followed by a number)
+2. The same configuration (volumes, networks, environment variables)
+3. Different exposed ports (if you're publishing ports)
+
+For port publishing to work with scaling, you need to use the short syntax with just the container port:
+
+```yaml
+services:
+  web:
+    ports:
+      - "80"  # Docker will assign random host ports automatically
+```
+
+## Using Restart Policies
+
+Restart policies determine how Docker should handle container failures, which is critical for maintaining service availability.
+
+### Available Restart Policies
+
+In your docker-compose.yml file, you can specify:
+
+```yaml
+services:
+  web:
+    restart: always   # Always restart regardless of exit status
+    # Other options:
+    # restart: on-failure[:max-retries]
+    # restart: unless-stopped
+    # restart: no (default)
+```
+
+### Policy Descriptions
+
+- `no`: Never restart (default)
+- `always`: Always restart the container regardless of the exit status
+- `on-failure[:max-retries]`: Restart only if the container exits with a non-zero status
+- `unless-stopped`: Similar to `always`, but won't restart if the container was stopped manually
+
+### Best Practices
+
+- Use `always` or `unless-stopped` for critical services
+- Use `on-failure` for auxiliary services
+- Consider setting `max-retries` to prevent endless restart loops for services with persistent errors
+
+## Load Balancing with Nginx & Compose
+
+For web applications, load balancing is essential when scaling services. Nginx works well as a reverse proxy in a Docker Compose environment.
+
+### Sample Configuration
+
+```yaml
+version: '3'
+
+services:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - api
+
+  api:
+    build: ./api
+    expose:
+      - "3000"
+    # No need to publish ports as nginx will handle routing
+```
+
+The corresponding nginx.conf might look like:
+
+```
+events {
+    worker_connections 1024;
+}
+
+http {
+    upstream api_servers {
+        server api:3000;  # Docker's DNS resolves this to all api containers
+    }
+
+    server {
+        listen 80;
+
+        location / {
+            proxy_pass http://api_servers;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+    }
+}
+```
+
+Docker's built-in DNS resolution automatically load balances requests across all containers with the service name "api".
+
+## Intro to Docker Swarm
+
+While Docker Compose works well for development and simple production setups, Docker Swarm provides built-in orchestration for more complex deployments.
+
+### What is Docker Swarm?
+
+Docker Swarm is Docker's native clustering and orchestration solution. It turns a group of Docker hosts into a single virtual Docker host.
+
+### Key Features
+
+1. **Declarative service model**: Define desired state and Swarm maintains it
+2. **Multi-host networking**: Overlay networks connect containers across hosts
+3. **Service discovery**: Internal DNS resolves service names to container IPs
+4. **Load balancing**: Built-in load balancing for services
+5. **Rolling updates**: Update services without downtime
+6. **Scaling**: Scale services up or down dynamically
+
+### Basic Swarm Commands
+
+Initialize a Swarm:
+```bash
+docker swarm init --advertise-addr <MANAGER-IP>
+```
+
+Join a node to the Swarm:
+```bash
+docker swarm join --token <TOKEN> <MANAGER-IP>:2377
+```
+
+Deploy a stack (similar to docker-compose up):
+```bash
+docker stack deploy -c docker-compose.yml myapp
+```
+
+## Docker Buildx for Multi-Platform Images
+
+Buildx allows building Docker images for multiple platforms simultaneously.
+
+### Why Multi-Platform Images?
+
+- Support for diverse deployment environments (x86, ARM, etc.)
+- Especially important for mixed infrastructure or edge deployments
+- Crucial for applications targeting both standard servers and Raspberry Pi/ARM devices
+
+### Using Buildx
+
+Initialize Buildx:
+```bash
+docker buildx create --name mybuilder
+docker buildx use mybuilder
+```
+
+Build multi-platform images:
+```bash
+docker buildx build --platform linux/amd64,linux/arm64 -t username/app:latest --push .
+```
+
+### Integration with Docker Compose
+
+For local development with Compose, you can specify platform in your service definition:
+
+```yaml
+services:
+  app:
+    build:
+      context: ./app
+      platforms:
+        - "linux/amd64"
+        - "linux/arm64"
+```
+
+## Hands-on Demo: Scale a Node.js API with Docker Compose
+
+Let's create and scale a simple Node.js API with Docker Compose and Nginx load balancing.
+
+### Project Structure
+
+```
+project/
+├── api/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── server.js
+├── nginx/
+│   └── nginx.conf
+└── docker-compose.yml
+```
+
+### API Files
+
+**api/package.json**:
+```json
+{
+  "name": "scalable-api",
+  "version": "1.0.0",
+  "main": "server.js",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
+```
+
+**api/server.js**:
+```javascript
+const express = require('express');
+const os = require('os');
+const app = express();
+const PORT = 3000;
+
+// Generate a unique ID for this instance
+const instanceId = Math.random().toString(36).substring(2, 8);
+
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Hello from API',
+    instance: instanceId,
+    hostname: os.hostname()
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`API server running on port ${PORT} (Instance: ${instanceId})`);
+});
+```
+
+**api/Dockerfile**:
+```dockerfile
+FROM node:14-alpine
+WORKDIR /app
+COPY package.json .
+RUN npm install
+COPY server.js .
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
+
+### Nginx Configuration
+
+**nginx/nginx.conf**:
+```
+events {
+    worker_connections 1024;
+}
+
+http {
+    upstream api_servers {
+        server api:3000;
+    }
+
+    server {
+        listen 80;
+        
+        location / {
+            proxy_pass http://api_servers;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            add_header X-Upstream $upstream_addr always;
+        }
+    }
+}
+```
+
+### Docker Compose File
+
+**docker-compose.yml**:
+```yaml
+version: '3'
+
+services:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+
+  api:
+    build: ./api
+    expose:
+      - "3000"
+    restart: always
+```
+
+### Testing the Scaled Setup
+
+1. Start the services:
+```bash
+docker-compose up -d --scale api=3
+```
+
+2. Check the running containers:
+```bash
+docker-compose ps
+```
+
+3. Test the load balancing:
+```bash
+for i in {1..10}; do curl http://localhost; done
+```
+
+You should see responses from different API instances, demonstrating that the load balancer is distributing requests.
+
+## Mini Project: Deploy a Scalable Microservices Architecture
+
+Let's build a more complex example with multiple services:
+
+- A web frontend
+- An API service (that we'll scale)
+- A Redis cache
+- A worker service for background processing
+
+### Project Structure
+
+```
+project/
+├── web/
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── public/
+│   └── src/
+├── api/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── server.js
+├── worker/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── worker.js
+└── docker-compose.yml
+```
+
+### Docker Compose File
+
+```yaml
+version: '3'
+
+services:
+  web:
+    build: ./web
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://nginx
+    depends_on:
+      - nginx
+    restart: always
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+    restart: always
+
+  api:
+    build: ./api
+    expose:
+      - "4000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    restart: always
+    # No need to publish ports as nginx will handle routing
+
+  worker:
+    build: ./worker
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    restart: always
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - redis-data:/data
+    restart: always
+
+volumes:
+  redis-data:
+```
+
+### Implementation Steps
+
+1. First, create the API, web, and worker services
+2. Set up communication between them using Redis
+3. Configure Nginx for load balancing the API
+4. Start the services with scaling for API and worker:
+   ```bash
+   docker-compose up -d --scale api=3 --scale worker=2
+   ```
+
+### Monitoring the Deployment
+
+Monitor the containers:
+```bash
+docker-compose ps
+```
+
+Check logs from all services:
+```bash
+docker-compose logs -f
+```
+
+Test the system scaling under load:
+```bash
+# Using a tool like Apache Bench
+ab -n 1000 -c 10 http://localhost/
+```
+
+### Key Learning Points
+
+This mini-project demonstrates several important concepts:
+
+1. **Service discovery**: Services communicating via Docker's internal DNS
+2. **Data persistence**: Using named volumes for Redis data
+3. **Scaling different components**: API for handling requests, workers for background tasks
+4. **Load balancing**: Using Nginx as a reverse proxy
+5. **Resilience**: Using restart policies to handle failures
+
+These principles form the foundation of scalable containerized applications and prepare you for more advanced orchestration with Docker Swarm or Kubernetes.
+
+Would you like me to elaborate on any specific part of this lesson or provide more details about any of these concepts?
+============================================================
+# Docker Compose - Advanced Level: Advanced Networking & Storage
+
+In this lesson, we'll explore the more sophisticated aspects of Docker networking and storage, which are crucial for building robust, production-ready containerized applications.
+
+## Linking Containers & Named Volumes
+
+When containers need to communicate or share data, Docker provides several powerful mechanisms to facilitate these interactions.
+
+### Container Linking
+
+Container linking creates a secure channel for containers to communicate. While the legacy `--link` flag is deprecated, Docker Compose handles container connections seamlessly through defined networks:
+
+```yaml
+services:
+  web:
+    depends_on:
+      - db
+    networks:
+      - frontend
+      - backend
+  
+  db:
+    networks:
+      - backend
+
+networks:
+  frontend:
+  backend:
+```
+
+In this example, the `web` service can communicate with the `db` service through the shared `backend` network. Each service can resolve the other by service name, functioning as an internal DNS system.
+
+### Named Volumes
+
+Named volumes provide persistent storage that survives container restarts and can be shared between containers:
+
+```yaml
+services:
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+    # You can specify driver options here
+```
+
+Named volumes have several advantages:
+- They're managed by Docker, simplifying backup processes
+- They can be shared across multiple containers
+- They can use different storage drivers for different use cases
+- They're easily referenced in Docker commands by name
+
+## External Databases in Compose
+
+Production applications often connect to external databases rather than containerized ones. Docker Compose supports this approach elegantly.
+
+### Connecting to External Databases
+
+```yaml
+services:
+  web:
+    environment:
+      - DB_HOST=production-db.example.com
+      - DB_PORT=5432
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+```
+
+You can use environment variables in your Docker Compose file by:
+1. Creating a `.env` file in the same directory
+2. Referencing variables with `${VARIABLE_NAME}` syntax
+
+### Best Practices for External Databases
+
+1. Use environment variables for sensitive credentials
+2. Consider network latency when your app connects to external services
+3. Implement connection pooling to manage database connections efficiently
+4. Add health checks to ensure your application waits for the database to be available:
+
+```yaml
+services:
+  web:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+## Persistent Storage for Stateful Applications
+
+Stateful applications like databases require reliable persistent storage to maintain data integrity across container lifecycles.
+
+### Volume Types for Different Needs
+
+Docker offers several volume types for different requirements:
+
+1. **Named volumes** - Best for most production uses
+   ```yaml
+   volumes:
+     mongodb_data:
+       driver: local
+   ```
+
+2. **Bind mounts** - Useful for development when you need to edit files directly
+   ```yaml
+   volumes:
+     - ./config:/app/config:ro  # Read-only bind mount
+   ```
+
+3. **tmpfs mounts** - For ephemeral storage that needs high performance
+   ```yaml
+   tmpfs: /tmp
+   ```
+
+### Volume Drivers
+
+Volume drivers extend Docker's storage capabilities:
+
+```yaml
+volumes:
+  db_data:
+    driver: rexray/ebs
+    driver_opts:
+      size: "20"
+      volumetype: "gp2"
+```
+
+Common drivers include:
+- `local` - Default local storage
+- `rexray` - For cloud provider storage (AWS EBS, Azure Disk)
+- `nfs` - For network file systems
+- `ceph` - For distributed storage systems
+
+## Backup Strategies for Volumes
+
+Data backup is essential for production systems, and Docker provides several approaches for backing up volume data.
+
+### Method 1: Using a Temporary Container
+
+```bash
+# Create a temporary container that mounts the volume
+docker run --rm -v my_volume:/source -v $(pwd)/backup:/backup alpine \
+  tar -czf /backup/my_volume_backup.tar.gz -C /source .
+```
+
+This approach:
+1. Creates a temporary Alpine container
+2. Mounts both the volume to back up and a local directory
+3. Archives the volume contents to the local directory
+
+### Method 2: Docker Volume Backup Command
+
+```bash
+# Backup
+docker volume create --name temp_backup
+docker run --rm -v postgres_data:/from -v temp_backup:/to alpine cp -av /from/. /to/
+docker run --rm -v temp_backup:/backup -v $(pwd):/output alpine tar -czf /output/backup.tar.gz /backup
+
+# Restore
+docker run --rm -v $(pwd)/backup.tar.gz:/backup.tar.gz -v postgres_data:/data alpine \
+  sh -c "rm -rf /data/* && tar -xzf /backup.tar.gz -C /data"
+```
+
+### Automated Backup Solutions
+
+For production environments, consider:
+1. Scheduled backups using cron and Docker commands
+2. Database-specific backup tools (pg_dump, mongodump)
+3. Volume driver snapshots if supported by your storage provider
+
+## Bridge Networking in Detail
+
+The bridge network is Docker's default network mode, providing isolated networks for containers to communicate.
+
+### How Bridge Networks Function
+
+1. Docker creates a virtual bridge interface (`docker0`) on the host
+2. Each container gets a virtual ethernet interface connected to this bridge
+3. Containers on the same bridge network can communicate with each other
+4. NAT (Network Address Translation) allows containers to connect to external networks
+
+### Creating Custom Bridge Networks
+
+```yaml
+networks:
+  my_custom_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: docker_custom_bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1
+```
+
+Custom bridge networks provide:
+- Better isolation
+- Automatic DNS resolution between containers
+- Ability to connect and disconnect containers without restarting
+- More control over IP address management
+
+## Host Networking Mode Use Cases
+
+Host networking mode removes network isolation between the container and the host, allowing containers to use the host's network stack directly.
+
+### Configuration
+
+```yaml
+services:
+  monitoring_agent:
+    network_mode: "host"
+```
+
+### Ideal Use Cases
+
+Host networking is particularly valuable for:
+1. **Performance-critical applications** that can't afford any network overhead
+2. **Network monitoring tools** that need to inspect host network traffic
+3. **Applications that manage or configure the host's network** (like network proxies)
+4. **Situations where ports need to bind to specific interfaces** on the host
+
+### Trade-offs
+
+While host networking offers performance benefits, it sacrifices:
+- Container network isolation
+- Ability to map ports (since the container shares the host's ports)
+- Ability to join multiple networks
+
+## None Networking Mode
+
+The "none" network mode completely isolates a container from networking.
+
+### Configuration
+
+```yaml
+services:
+  batch_processor:
+    network_mode: "none"
+```
+
+### Use Cases
+
+This mode is useful for:
+1. **Batch processing jobs** that don't need network access
+2. **Security-sensitive applications** that should be completely isolated
+3. **CPU/disk-intensive tasks** where network capabilities are unnecessary
+
+## Macvlan and IPvlan for Specialized Networking
+
+These advanced networking modes allow containers to appear as physical devices on your network.
+
+### Macvlan
+
+Macvlan assigns a MAC address to each container, making it appear as a physical device on your network:
+
+```yaml
+networks:
+  macvlan_network:
+    driver: macvlan
+    driver_opts:
+      parent: eth0
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24
+          gateway: 192.168.1.1
+```
+
+Use cases include:
+- Legacy applications that expect to be directly on the physical network
+- Network appliances that need to capture all network traffic
+
+### IPvlan
+
+IPvlan is similar to macvlan but shares the parent interface's MAC address:
+
+```yaml
+networks:
+  ipvlan_network:
+    driver: ipvlan
+    driver_opts:
+      parent: eth0
+      mode: l2
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24
+          gateway: 192.168.1.1
+```
+
+IPvlan is preferred when:
+- You're in environments with MAC address filtering
+- You need to conserve MAC addresses
+- You want slightly better performance than macvlan
+
+## DNS Resolution Between Containers
+
+Docker provides built-in DNS resolution for containers, allowing them to find each other by service name.
+
+### How DNS Works in Docker
+
+1. Each container gets a DNS resolver configured to use Docker's internal DNS server
+2. When a container looks up another container's name, Docker's DNS server resolves it to the appropriate IP address
+3. For custom networks, DNS resolution works automatically
+4. For the default bridge network, you need to use the deprecated `--link` flag or switch to custom networks
+
+### Customizing DNS
+
+```yaml
+services:
+  web:
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    dns_search: example.com
+```
+
+You can also configure DNS at the Docker daemon level by editing `/etc/docker/daemon.json`:
+
+```json
+{
+  "dns": ["8.8.8.8", "8.8.4.4"],
+  "dns-search": ["example.com"]
+}
+```
+
+## Overlay Networks for Multi-Host Deployments
+
+Overlay networks enable communication between containers across multiple Docker hosts, essential for clustering solutions like Docker Swarm.
+
+### Creating Overlay Networks
+
+```yaml
+networks:
+  my_overlay:
+    driver: overlay
+    attachable: true  # Allow standalone containers to join
+    driver_opts:
+      encrypted: "true"  # Enable encryption
+```
+
+### Key Features
+
+1. **Multi-host communication** - Containers on different hosts can communicate seamlessly
+2. **Service discovery** - Services can find each other by name across hosts
+3. **Load balancing** - Traffic is distributed across service instances
+4. **Encryption** - Optional encryption for data traversing the network
+
+Overlay networks require a cluster management system like Docker Swarm or a key-value store like Consul to manage network state.
+
+## Hands-on Demo: Store Persistent MongoDB Data Using Named Volumes
+
+Let's build a practical example using MongoDB with named volumes for persistent data storage.
+
+### Project Structure
+
+```
+mongodb-demo/
+├── docker-compose.yml
+├── mongo-init.js
+└── app/
+    ├── Dockerfile
+    ├── package.json
+    └── server.js
+```
+
+### Docker Compose File
+
+```yaml
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:4.4
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: demo
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - backend
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_USERNAME:-admin}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_PASSWORD:-password}
+      ME_CONFIG_MONGODB_SERVER: mongodb
+    depends_on:
+      - mongodb
+    networks:
+      - backend
+
+  api:
+    build: ./app
+    container_name: api
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      MONGO_URI: mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD:-password}@mongodb:27017/demo?authSource=admin
+    depends_on:
+      - mongodb
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local
+  mongo_config:
+    driver: local
+```
+
+### MongoDB Initialization Script
+
+**mongo-init.js**:
+```javascript
+// This script will be executed when the MongoDB container is first initialized
+db = db.getSiblingDB('demo');
+
+// Create a collection
+db.createCollection('items');
+
+// Insert some initial data
+db.items.insertMany([
+  { name: 'Item 1', description: 'Description for Item 1', price: 10.99 },
+  { name: 'Item 2', description: 'Description for Item 2', price: 15.99 },
+  { name: 'Item 3', description: 'Description for Item 3', price: 5.99 }
+]);
+
+// Create a user for the application
+db.createUser({
+  user: 'app_user',
+  pwd: 'app_password',
+  roles: [
+    { role: 'readWrite', db: 'demo' }
+  ]
+});
+```
+
+### Simple Node.js API
+
+**app/Dockerfile**:
+```dockerfile
+FROM node:14-alpine
+
+WORKDIR /app
+
+COPY package.json .
+RUN npm install
+
+COPY server.js .
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]
+```
+
+**app/package.json**:
+```json
+{
+  "name": "mongo-demo-api",
+  "version": "1.0.0",
+  "main": "server.js",
+  "dependencies": {
+    "express": "^4.17.1",
+    "mongoose": "^5.13.2"
+  }
+}
+```
+
+**app/server.js**:
+```javascript
+const express = require('express');
+const mongoose = require('mongoose');
+const app = express();
+const PORT = 3000;
+
+// Enable JSON parsing for incoming requests
+app.use(express.json());
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  useFindAndModify: false,
+  useCreateIndex: true
+})
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => console.error('MongoDB connection error:', err));
+
+// Define a Schema and Model
+const ItemSchema = new mongoose.Schema({
+  name: String,
+  description: String,
+  price: Number
+});
+
+const Item = mongoose.model('Item', ItemSchema);
+
+// API Routes
+app.get('/api/items', async (req, res) => {
+  try {
+    const items = await Item.find();
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/items', async (req, res) => {
+  try {
+    const newItem = new Item(req.body);
+    const savedItem = await newItem.save();
+    res.status(201).json(savedItem);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+```
+
+### Testing the Persistence
+
+1. Start the services:
+   ```bash
+   docker-compose up -d
+   ```
+
+2. View the running containers:
+   ```bash
+   docker-compose ps
+   ```
+
+3. Check available volumes:
+   ```bash
+   docker volume ls
+   ```
+
+4. Test the API by adding a new item:
+   ```bash
+   curl -X POST -H "Content-Type: application/json" -d '{"name":"Test Item","description":"Added via API","price":19.99}' http://localhost:3000/api/items
+   ```
+
+5. Verify the item was added:
+   ```bash
+   curl http://localhost:3000/api/items
+   ```
+
+6. Restart the containers to test persistence:
+   ```bash
+   docker-compose down
+   docker-compose up -d
+   ```
+
+7. Check that your data is still available:
+   ```bash
+   curl http://localhost:3000/api/items
+   ```
+
+### Backing up the MongoDB Volume
+
+```bash
+# Create a backup directory
+mkdir -p ./backups
+
+# Backup the mongo_data volume
+docker run --rm -v mongodb-demo_mongo_data:/data -v $(pwd)/backups:/backup alpine \
+  tar -czf /backup/mongo_data_backup.tar.gz -C /data .
+```
+
+## Mini Project: Deploy a GraphQL API with PostgreSQL and Redis
+
+Let's create a more complex application with multiple persistent services and advanced networking.
+
+### Project Structure
+
+```
+graphql-api/
+├── docker-compose.yml
+├── .env
+├── api/
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── schema.js
+│   └── server.js
+├── migrations/
+│   └── init.sql
+└── nginx/
+    └── nginx.conf
+```
+
+### Environment Variables
+
+**.env**:
+```
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=secretpassword
+POSTGRES_DB=userdb
+REDIS_PASSWORD=redispassword
+NODE_ENV=development
+```
+
+### Docker Compose File
+
+```yaml
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+    restart: always
+    networks:
+      - frontend
+
+  api:
+    build: ./api
+    expose:
+      - "4000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-secretpassword}@postgres:5432/${POSTGRES_DB:-userdb}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redispassword}@redis:6379
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+    networks:
+      - frontend
+      - backend
+
+  postgres:
+    image: postgres:13-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-secretpassword}
+      - POSTGRES_DB=${POSTGRES_DB:-userdb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    networks:
+      - backend
+
+  redis:
+    image: redis:6-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redispassword}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    networks:
+      - backend
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true  # This network is not accessible from outside Docker
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+```
+
+### PostgreSQL Initialization
+
+**migrations/init.sql**:
+```sql
+-- Create users table
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(50) UNIQUE NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create posts table
+CREATE TABLE posts (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  body TEXT,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create comments table
+CREATE TABLE comments (
+  id SERIAL PRIMARY KEY,
+  body TEXT NOT NULL,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert some test data
+INSERT INTO users (username, email, password_hash) VALUES
+  ('johndoe', 'john@example.com', '$2a$10$rNCps63g0d1TjY/7MNbHzeFB5UvzVeUgYXRhrPCy9aMJ.nrJGYxlC'),
+  ('janedoe', 'jane@example.com', '$2a$10$rNCps63g0d1TjY/7MNbHzeFB5UvzVeUgYXRhrPCy9aMJ.nrJGYxlC');
+
+INSERT INTO posts (title, body, user_id) VALUES
+  ('First Post', 'This is the first post content.', 1),
+  ('Second Post', 'This is the second post content.', 1),
+  ('Jane''s Post', 'This is Jane''s first post.', 2);
+
+INSERT INTO comments (body, user_id, post_id) VALUES
+  ('Great post!', 2, 1),
+  ('I agree with this.', 1, 3),
+  ('Thanks for sharing.', 2, 2);
+```
+
+### Nginx Configuration
+
+**nginx/nginx.conf**:
+```
+events {
+    worker_connections 1024;
+}
+
+http {
+    upstream api_servers {
+        server api:4000;
+    }
+
+    server {
+        listen 80;
+        
+        location / {
+            proxy_pass http://api_servers;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+}
+```
+
+### GraphQL API Implementation
+
+**api/Dockerfile**:
+```dockerfile
+FROM node:14-alpine
+
+WORKDIR /app
+
+COPY package.json .
+RUN npm install
+
+COPY . .
+
+EXPOSE 4000
+
+CMD ["node", "server.js"]
+```
+
+**api/package.json**:
+```json
+{
+  "name": "graphql-api",
+  "version": "1.0.0",
+  "main": "server.js",
+  "dependencies": {
+    "apollo-server-express": "^2.25.2",
+    "express": "^4.17.1",
+    "graphql": "^15.5.1",
+    "pg": "^8.6.0",
+    "pg-hstore": "^2.3.4",
+    "redis": "^3.1.2",
+    "sequelize": "^6.6.5"
+  }
+}
+```
+
+**api/schema.js**:
+```javascript
+const { gql } = require('apollo-server-express');
+
+// Define GraphQL schema
+const typeDefs = gql`
+  type User {
+    id: ID!
+    username: String!
+    email: String!
+    posts: [Post!]
+    comments: [Comment!]
+  }
+
+  type Post {
+    id: ID!
+    title: String!
+    body: String
+    user: User!
+    comments: [Comment!]
+    createdAt: String!
+  }
+
+  type Comment {
+    id: ID!
+    body: String!
+    user: User!
+    post: Post!
+    createdAt: String!
+  }
+
+  type Query {
+    user(id: ID!): User
+    users: [User!]!
+    post(id: ID!): Post
+    posts: [Post!]!
+    comments: [Comment!]!
+  }
+
+  type Mutation {
+    createUser(username: String!, email: String!, password: String!): User!
+    createPost(title: String!, body: String, userId: ID!): Post!
+    createComment(body: String!, userId: ID!, postId: ID!): Comment!
+  }
+`;
+
+module.exports = typeDefs;
+```
+
+**api/server.js**:
+```javascript
+const express = require('express');
+const { ApolloServer } = require('apollo-server-express');
+const { Sequelize, DataTypes } = require('sequelize');
+const redis = require('redis');
+const { promisify } = require('util');
+const typeDefs = require('./schema');
+
+// Initialize Express
+const app = express();
+const PORT = process.env.PORT || 4000;
+
+// Initialize PostgreSQL connection
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
+  dialect: 'postgres',
+  logging: process.env.NODE_ENV === 'development' ? console.log : false,
+});
+
+// Initialize Redis client
+const redisClient = redis.createClient(process.env.REDIS_URL);
+const getAsync = promisify(redisClient.get).bind(redisClient);
+const setAsync = promisify(redisClient.set).bind(redisClient);
+
+// Define models
+const User = sequelize.define('User', {
+  username: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+  },
+  email: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+  },
+  password_hash: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+}, {
+  tableName: 'users',
+  underscored: true,
+});
+
+const Post = sequelize.define('Post', {
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  body: {
+    type: DataTypes.TEXT,
+  },
+}, {
+  tableName: 'posts',
+  underscored: true,
+});
+
+const Comment = sequelize.define('Comment', {
+  body: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+}, {
+  tableName: 'comments',
+  underscored: true,
+});
+
+// Define associations
+User.hasMany(Post, { foreignKey: 'user_id' });
+Post.belongsTo(User, { foreignKey: 'user_id' });
+
+User.hasMany(Comment, { foreignKey: 'user_id' });
+Comment.belongsTo(User, { foreignKey: 'user_id' });
+
+Post.hasMany(Comment, { foreignKey: 'post_id' });
+Comment.belongsTo(Post, { foreignKey: 'post_id' });
+
+// Define resolvers
+const resolvers = {
+  Query: {
+    // Get a user by ID
+    user: async (_, { id }) => {
+      // Try to get from cache first
+      const cachedUser = await getAsync(`user:${id}`);
+      if (cachedUser) {
+        return JSON.parse(cachedUser);
+      }
+      
+      const user = await User.findByPk(id);
+      if (user) {
+        // Cache the result
+        await setAsync(`user:${id}`, JSON.stringify(user), 'EX', 3600);
+      }
+      return user;
+    },
+    
+    // Get all users
+    users: async () => {
+      const cachedUsers = await getAsync('users:all');
+      if (cachedUsers) {
+        return JSON.parse(cachedUsers);
+      }
+      
+      const users = await User.findAll();
+      await setAsync('users:all', JSON.stringify(users), 'EX', 60);
+      return users;
+    },
+    
+    // Get a post by ID
+    post: async (_, { id }) => {
+      const cachedPost = await getAsync(`post:${id}`);
+      if (cachedPost) {
+        return JSON.parse(cachedPost);
+      }
+      
+      const post = await Post.findByPk(id);
+      if (post) {
+        await setAsync(`post:${id}`, JSON.stringify(post), 'EX', 3600);
+      }
+      return post;
+    },
+    
+    // Get all posts
+    posts: async () => {
+      const cachedPosts = await getAsync('posts:all');
+      if (cachedPosts) {
+        return JSON.parse(cachedPosts);
+      }
+      
+      const posts = await Post.findAll();
+      await setAsync('posts:all', JSON.stringify(posts), 'EX', 60);
+      return posts;
+    },
+    
+    // Get all comments
+    comments: async () => Comment.findAll(),
+  },
+  
+  Mutation: {
+    // Create a new user
+    createUser: async (_, { username, email, password }) => {
+      // In a real app, you would hash the password here
+      const password_hash = password; // Simplified for demo
+      
+      const user = await User.create({
+        username,
+        email,
+        password_hash,
+      });
+      
+      // Invalidate users cache
+      redisClient.del('users:all');
+      
+      return user;
+    },
+    
+    // Create a new post
+    createPost: async (_, { title, body, userId }) => {
+      const post = await Post.create({
+        title,
+        body,
+        user_id: userId,
+      });
+      
+      // Invalidate posts cache
+      redisClient.del('posts:all');
+      
+      return post;
+    },
+    
+    // Create a new comment
+    createComment: async (_, { body, userId, postId }) => {
+      const comment = await Comment.create({
+        body,
+        user_id: userId,
+        post_id: postId,
+      });
+      
+      // Invalidate relevant post cache
+      redisClient.del(`post:${postId}`);
+      
+      return comment;
+    },
+  },
+  
+  User: {
+    posts: (user) => Post.findAll({ where: { user_id: user.id } }),
+    comments: (user) => Comment.findAll({ where: { user_id: user.id } }),
+  },
+  
+  Post: {
+    user: (post) => User.findByPk(post.user_id),
+    comments: (post) => Comment.findAll({ where: { post_id: post.id } }),
+  },
+  
+  Comment: {
+    user: (comment) => User.findByPk(comment.user_id),
+    post: (comment) => Post.findByPk(comment.post_id),
+  },
+};
+
+// Create Apollo Server
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+  context: { User, Post, Comment },
+});
+
+// Apply Apollo middleware
+server.applyMiddleware({ app });
+
+// Start the server
+app.listen(PORT, async () => {
+  try {
+    await sequelize.authenticate();
+    console.log('Connected to PostgreSQL database');
+    
+    redisClient.on('connect', function() {
+      console.log('Connected to Redis');
+    });
+    
+    console.log(`GraphQL server running at http://localhost:${PORT}${server.graphqlPath}`);
+  } catch (error) {
+    console.error('Unable to connect to the database:', error);
+  }
+});
+```
+
+### Testing the GraphQL API
+
+1. Start the services:
+   ```bash
+   docker-compose up -d
+   ```
+
+2. Open your browser to `http://localhost/graphql` to access the GraphQL playground
+
+3. Try some queries:
+   ```graphql
+   {
+     users {
+       id
+       username
+       posts {
+         id
+         title
+       }
+     }
+   }
+   ```
+
+4. Test a mutation:
+   ```graphql
+   mutation {
+     createPost(
+       title: "New GraphQL Post"
+       body: "This is a post created through GraphQL"
+       userId: 1
+     ) {
+       id
+       title
+       user {
+         username
+       }
+     }
+   }
+   ```
+
+5. Test the Redis caching by running the same query again (should be faster)
+
+### Key Features Demonstrated
+
+This mini-project showcases several advanced Docker networking and storage concepts:
+
+1. **Multi-tier architecture** with frontend (Nginx), application (GraphQL API), and data layers (PostgreSQL, Redis)
+2. **Internal networking** for database services, improving security
+3. **Persistent storage** for both PostgreSQL and Redis using named volumes
+4. **Health checks** to ensure services are available before dependencies try to connect
+5. **Database initialization** through volume-mounted SQL scripts

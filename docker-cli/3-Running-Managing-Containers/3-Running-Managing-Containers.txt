@@ -1,0 +1,300 @@
+# Running and Managing Docker Containers
+
+## Objective
+Master the core Docker container lifecycle management commands to effectively deploy, control, and monitor containerized applications in development and production environments.
+
+## 1. Running Containers (docker run)
+The foundational `docker run` command does much more than simply launching a container. When you execute this command, Docker:
+1. Checks for the image locally
+2. Downloads the image from a registry if not found
+3. Creates a new container filesystem based on the image
+4. Allocates a network interface and IP address
+5. Sets up environment variables from the image
+6. Executes the specified command (or default entrypoint)
+
+# docker run ubuntu:20.04 echo "Hello, Docker!"
+This seemingly simple command orchestrates multiple steps behind the scenes. Docker creates an isolated environment, mounts the Ubuntu 20.04 filesystem layers in read-only mode, adds a writable layer on top, and executes your command.
+
+### Common Options Worth Understanding:
+
+# Name your container for easier reference
+docker run --name webapp-test nginx:latest
+
+# Set environment variables
+docker run -e DB_HOST=mysql -e DB_PORT=3306 my-app:latest
+
+
+# Mount volumes for data persistence
+docker run -v $(pwd)/data:/app/data my-app:latest
+
+# Set resource limits
+docker run --memory=512m --cpus=0.5 nginx:latest
+
+When a container exits, its filesystem changes remain intact until you remove it. This lets you inspect logs, copy files, or restart the container with the same state:
+
+# After a container exits
+docker cp exited-container:/app/logs ./logs
+docker restart exited-container
+
+## 2. Detached Mode (Background Containers)
+Detached mode is essential for service-oriented applications. When you use the `-d` flag, Docker:
+1. Starts the container in the background
+2. Redirects container output to the Docker daemon
+3. Returns control immediately to your terminal
+4. Provides an ID for future reference
+#docker run -d --name api-service -p 8080:80 my-api:latest
+This is ideal for web servers, databases, and other long-running services. A detached container doesn't block your terminal but continues running until stopped or crashed.
+
+### Monitoring Detached Containers:
+# Stream logs in real-time (like tail -f)
+docker logs -f api-service
+# Show container resource usage
+docker stats api-service
+# Show detailed configuration
+docker inspect api-service
+
+Real-world usage often involves multiple related containers:
+
+# Run a web application with a connected database
+docker run -d --name mysql-db -e MYSQL_ROOT_PASSWORD=secret mysql:8.0
+docker run -d --name web-app --link mysql-db -p 80:80 my-webapp:latest
+==
+# Step 1: Create a custom network
+docker network create my-network
+sudo mkdir -p /host/nginx
+sudo touch /host/nginx/nginx.conf
+sudo chmod 644 /host/nginx/nginx.conf
+
+====
+docker run --name my-database \                     # Assign a custom name to the container
+  --env MYSQL_ROOT_PASSWORD=root \                  # Set the root password for MySQL
+  --env MYSQL_DATABASE=mydb \                       # Create a new database called 'mydb'
+  --env MYSQL_USER=myuser \                         # Create a MySQL user
+  --env MYSQL_PASSWORD=mypassword \                 # Set a password for the user
+  --hostname mysql-host \                           # Set the internal hostname of the container
+  --label app=database \                            # Add a label to categorize the container
+  --memory=512m \                                   # Limit memory usage to 512MB
+  --cpus="1.5" \                                   # Limit CPU usage to 1.5 cores
+  --network my-network \                            # Connect the container to the custom network
+  --publish 3306:3306 \                             # Expose MySQL's default port (3306) to the host
+  --volume mysql_data:/var/lib/mysql \             # Mount a volume to persist MySQL data
+  --user 1000:1000 \                                 # Run MySQL as a specific user (UID 999, GID 999)
+  --workdir /var/lib/mysql \                       # Set the working directory inside the container
+  --detach \                                       # Run the container in the background (detached mode)
+  mysql:latest                                     # Use the latest MySQL image
+
+docker run --name my-nginx \                        # Assign a custom name to the Nginx container
+  --env BACKEND_HOST=my-database \                 # Define an environment variable for backend communication
+  --hostname nginx-host \                          # Set the internal hostname for Nginx
+  --label app=webserver \                          # Add a label to categorize the container
+  --memory=256m \                                  # Limit memory usage to 256MB
+  --cpus="0.8" \                                   # Restrict CPU usage to 0.8 cores
+  --network my-network \                           # Connect Nginx to the same network as MySQL
+  --publish 8080:80 \                              # Expose port 80 (inside container) to port 8080 (host)
+  --volume /host/nginx/conf:/etc/nginx/conf.d \    # Mount Nginx configuration files from the host
+  --user 1000:1000 \                                 # Run Nginx as a specific user (UID 101, GID 101)
+  --workdir /etc/nginx \                           # Set the working directory inside the container
+  --detach \                                       # Run Nginx in the background
+  nginx:latest                                     # Use the latest Nginx image
+
+============
+docker run --name my-database  --env MYSQL_ROOT_PASSWORD=root --env MYSQL_DATABASE=mydb  --env MYSQL_USER=myuser  --env MYSQL_PASSWORD=mypassword  --hostname mysql-host  --label app=database   --memory=512m  --cpus="1.5"  --network my-network  --publish 3306:3306 --volume mysql_data:/var/lib/mysql  --user 1000:1000  --workdir /var/lib/mysql   --detach  mysql:latest
+
+docker run --name my-nginx --hostname nginx-host  --label app=webserver  --memory=256m  --cpus="0.8" --network my-network --publish 8888:80 --volume /host/nginx/conf:/etc/nginx/conf.d:ro --volume /host/nginx/logs:/var/log/nginx --user 1000:1000 --workdir /etc/nginx/html --restart unless-stopped  --detach  nginx:latest
+==========
+# 4. Connect interactively to modify content
+docker exec -it web-demo bash
+# Inside the container:
+echo "<h1>Custom Nginx Page</h1>" > /usr/share/nginx/html/index.html
+exit
+# 5. Refresh the browser to see the change
+curl http://localhost:8080
+
+docker images 
+docker ps -a | grep my-nginx
+ docker stop  web-app database-test practical_cori  thirsty_franklin
+docker rm web-app database-test practical_cori  thirsty_franklin
+## 3. Interactive Mode (Terminal Sessions)
+Interactive mode creates a shell session inside a container, providing an experience similar to SSH-ing into a remote server. When you combine the `-i` and `-t` flags, Docker:
+1. Keeps STDIN open (`-i`), allowing input
+2. Allocates a pseudo-TTY (`-t`), providing a proper terminal experience
+3. Connects your terminal directly to the container's shell
+docker run -it ubuntu:20.04 bash
+This creates a fully interactive environment where you can explore the filesystem, debug applications, install software, or modify configuration files.
+
+### Advanced Interactive Usage:
+# Connect to a running container
+docker exec -it web-app bash
+# Run interactive session with a specific user
+docker run -it --user developer ubuntu:20.04 bash
+# Override the entrypoint for debugging
+docker run -it --entrypoint bash nginx:latest
+Interactive mode is invaluable for:
+- Troubleshooting configuration issues
+- Installing additional tools for debugging
+- Running database migrations or administration commands
+- Testing changes before committing them to your image
+
+## 4. Stopping Containers Gracefully
+When you execute `docker stop`, a sophisticated process occurs:
+1. Docker sends a SIGTERM signal to the main process (PID 1) inside the container
+2. The process has time to clean up resources, save state, and exit gracefully
+3. If the process doesn't exit within a timeout (default: 10 seconds), Docker sends SIGKILL
+# Stop with default timeout
+docker stop web-server
+# Stop with extended timeout for cleanup
+docker stop --time=30 database-server
+
+This graceful shutdown is critical for applications like databases that need to complete transactions and flush data to disk before terminating.
+
+### Forceful vs. Graceful Termination:
+# Graceful stop (SIGTERM, then SIGKILL if needed)
+docker stop container-id
+# Immediate, forceful stop (SIGKILL)
+docker kill container-id
+Understanding the difference is crucial for production environments. Force-killing a database might corrupt data, while gracefully stopping a static web server is usually safe.
+
+## 5. Restarting Containers
+The `docker restart` command combines a stop and start operation while preserving:
+- Container ID
+- Mounted volumes
+- Port mappings
+- Environment variables
+- Network connections
+
+docker restart api-service
+Behind the scenes, Docker:
+1. Sends a SIGTERM signal
+2. Waits for graceful shutdown (or timeout)
+3. Reinitializes the container's runtime
+4. Starts the entrypoint process again
+
+### Restart Policies for Production:
+# Restart container automatically on failure
+docker run -d --restart=on-failure:5 my-app:latest
+# Always restart, even after system reboot
+docker run -d --restart=always database:latest
+# Never automatically restart
+docker run -d --restart=no stateless-job:latest
+These policies ensure your services remain available despite temporary failures or system restarts.
+
+## ✅ Hands-on Demo: Web Server Lifecycle
+# 1. Run Nginx with port mapping and a name
+docker run -d -p 8080:80 --name web-demo nginx:latest
+
+# 2. Verify it's running and accessible
+curl http://localhost:8080
+# Should show the Nginx welcome page
+# 3. Examine the logs
+docker logs web-demo
+# 4. Connect interactively to modify content
+docker exec -it web-demo bash
+# Inside the container:
+echo "<h1>Custom Nginx Page</h1>" > /usr/share/nginx/html/index.html
+exit
+# 5. Refresh the browser to see the change
+curl http://localhost:8080
+# Should show "Custom Nginx Page"
+# 6. Stop the container gracefully
+docker stop web-demo
+# 7. Verify it's stopped
+docker ps -a | grep web-demo
+# Status should be "Exited"
+# 8. Restart it and verify your changes persisted
+docker restart web-demo
+curl http://localhost:8080
+# Should still show "Custom Nginx Page"
+# 9. Clean up
+docker stop web-demo
+docker rm web-demo
+
+## ✅Mini Project: Multi-Container Development Environment
+# 1. Create a Python Flask application
+mkdir -p flask-demo/app
+cd flask-demo
+
+# Create a simple Flask app that uses Redis
+cat > app/app.py << EOF
+from flask import Flask
+import redis
+import socket
+import os
+
+app = Flask(__name__)
+cache = redis.Redis(host='redis', port=6379)
+
+@app.route('/')
+def hello():
+    visits = cache.incr('visits')
+    hostname = socket.gethostname()
+    return f'Hello from Docker! This page has been viewed {visits} times.\nHostname: {hostname}\n'
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
+EOF
+
+# Create requirements.txt
+cat > app/requirements.txt << EOF
+flask==3.1.0
+redis==5.0.3
+EOF
+
+# Create a Dockerfile
+cat > Dockerfile << EOF
+FROM python:3.9-slim
+WORKDIR /app
+COPY app/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app/ .
+CMD ["python", "app.py"]
+EOF
+
+# 2. Build the application image
+docker build -t flask-redis-app:latest .
+
+# 3. Start a Redis container
+docker run -d --name redis redis:alpine
+
+# 4. Start the Flask application in interactive mode with port mapping
+docker run -it --name flask-app -p 5000:5000 --link redis flask-redis-app:latest
+
+# In another terminal, test the application:
+curl http://localhost:5000
+# Run it again to see the counter increase
+# 5. Stop both containers gracefully
+docker stop flask-app redis
+# 6. Restart them
+docker restart redis
+docker restart flask-app
+# 7. Notice that the counter continues from where it left off
+# This demonstrates that Redis data persists across container restarts
+# 8. Clean up
+docker stop flask-app redis
+docker rm flask-app redis
+
+This project demonstrates:
+- Multiple linked containers (application + database)
+- State persistence across container restarts
+- Interactive vs. detached container running
+- Basic container networking
+
+## Advanced Container Management Concepts
+### Container Lifecycle States
+Understanding the full container lifecycle enhances your Docker operational skills:
+1. **Created**: Container exists but hasn't started (`docker create`)
+2. **Running**: Container is executing its main process (`docker start`, `docker run`)
+3. **Paused**: Container execution is temporarily frozen (`docker pause`)
+4. **Exited**: Container process has terminated (`docker stop`, or process exit)
+5. **Dead**: Container failed to terminate properly (rare, usually requires `docker rm -f`)
+
+### Resource Management
+In production environments, controlling container resources is critical:
+# Limit memory and enable swap constraints
+docker run -d --memory=512m --memory-swap=1g nginx
+# Set CPU shares (relative weight)
+docker run -d --cpu-shares=512 compute-intensive-app
+# Limit to specific CPU cores
+docker run -d --cpuset-cpus="0,1" performance-critical-app
+
+
+

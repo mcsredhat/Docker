@@ -1,0 +1,165 @@
+#!/bin/bash 
+# API Service Docker Container Deployment Script
+# Version: 1.2
+# Purpose: Robust, secure, and observable deployment of containerized API service
+
+# Logging and Formatting Utilities
+# Color codes for enhanced terminal output
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly NC='\033[0m' # No Color
+
+# Logging
+log_type="info"
+timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+log_message() {
+    case "$log_type" in
+        "info")
+            echo -e "${BLUE}[INFO]${NC} ${timestamp}: $1"
+            ;;
+        "success")
+            echo -e "${GREEN}[SUCCESS]${NC} ${timestamp}: $1"
+            ;;
+        "warning")
+            echo -e "${YELLOW}[WARNING]${NC} ${timestamp}: $1" >&2
+            ;;
+        "error")
+            echo -e "${RED}[ERROR]${NC} ${timestamp}: $1" >&2
+            ;;
+        *)
+            echo "${timestamp}: $1"
+            ;;
+    esac
+}
+
+# Checking Docker Network Configuration
+network_name="app-network"
+subnet="192.168.1.0/24"
+gateway="192.168.1.1"
+
+log_message "info" "Checking Docker network configuration"
+
+if ! docker network inspect "${network_name}" &> /dev/null; then
+    log_message "warning" "Network '${network_name}' not found. Creating network..."
+    
+    docker network create \
+        --driver bridge \
+        --subnet "${subnet}" \
+        --gateway "${gateway}" \
+        --opt com.docker.network.bridge.default_bridge=false \
+        --opt com.docker.network.bridge.enable_ip_masquerade=true \
+        "${network_name}" || {
+            log_message "error" "Failed to create Docker network"
+            exit 1
+        }
+    
+    log_message "success" "Network '${network_name}' created successfully"
+else
+    log_message "info" "Network '${network_name}' already exists"
+fi
+
+# Preparing the Environment
+base_dir="/opt/api-service"
+env_dirs=("config" "logs" "app" "secrets")
+env_file="${base_dir}/config/database.env"
+
+# Create and secure directories
+for dir in "${env_dirs[@]}"; do
+    mkdir -p "${base_dir}/${dir}"
+    chmod 750 "${base_dir}/${dir}"
+    chown root:docker "${base_dir}/${dir}"
+done
+
+# Generate environment configuration if not exists
+if [[ ! -f "${env_file}" ]]; then
+    log_message "info" "Generating secure environment configuration"
+    
+    # Enhanced entropy for secret generation
+    db_password=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9!@#$%^&*()' | head -c 32)
+    api_secret=$(openssl rand -base64 48)
+    
+    cat > "${env_file}" <<EOL
+# Dynamically generated secure environment configuration
+DATABASE_URL=mysql://appuser:${db_password}@192.168.1.20/appdb
+API_SECRET_KEY=${api_secret}
+ENVIRONMENT=production
+LOG_LEVEL=info
+DEPLOYMENT_TIMESTAMP=$(date +%s)
+EOL
+    
+    chmod 600 "${env_file}"
+    chown root:docker "${env_file}"
+    
+    log_message "success" "Secure environment configuration generated"
+fi
+
+# Deploy API Service Container
+log_message "info" "Initiating API service container deployment"
+
+docker run -d \
+    --name api-service \
+    --hostname api-host \
+    --network app-network \
+    --ip 192.168.1.10 \
+    
+    # Resource Constraints with Intelligent Limits
+    --memory=512m \
+    --memory-reservation=256m \
+    --cpus="1" \
+    --pids-limit=100 \
+    
+    # Secure Environment Configuration
+    --env-file /opt/api-service/config/database.env \
+    
+    # Comprehensive Volume Management
+    --volume /opt/api-service/app:/app:ro \
+    --volume /opt/api-service/logs:/var/log/api \
+    --volume /opt/api-service/config:/etc/api-config:ro \
+    
+    # Advanced Security Configurations
+    --security-opt=no-new-privileges:true \
+    --read-only \
+    --tmpfs /tmp:size=50m,mode=1777 \
+    --cap-drop=ALL \
+    --cap-add=NET_BIND_SERVICE \
+    
+    # Resilience and Recovery Policies
+    --restart unless-stopped \
+    
+    # Robust Health Monitoring
+    --health-cmd="curl -fsSL http://localhost/health || exit 1" \
+    --health-interval=30s \
+    --health-retries=3 \
+    --health-timeout=5s \
+    --health-start-period=30s \
+    
+    # Comprehensive Logging Strategy
+    --log-driver json-file \
+    --log-opt max-size=10m \
+    --log-opt max-file=3 \
+    
+    # Enhanced Observability Labels
+    --label service=api \
+    --label environment=production \
+    --label maintainer=devops-team \
+    --label version=1.2 \
+    --label deployment-timestamp=$(date +%s) \
+    
+    # Security Profile Application
+    --security-opt seccomp=/opt/api-service/config/seccomp-profile.json \
+    
+    # Container Image Selection
+    my-api-image:latest
+
+# Deployment Verification
+if [[ $? -eq 0 ]]; then
+    log_message "success" "API Service container deployed successfully!"
+else
+    log_message "error" "Failed to deploy API Service container"
+    exit 1
+fi
+
+# Final success message
+log_message "success" "Deployment process completed successfully!"
