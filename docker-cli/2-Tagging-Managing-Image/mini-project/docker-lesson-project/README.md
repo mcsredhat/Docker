@@ -32,7 +32,7 @@ This project demonstrates how to build, tag, and run a Dockerized Python applica
    docker run -d -p 5002:5000 -e ENVIRONMENT=staging --name myapp-staging myapp:$VERSION-staging
    docker run -d -p 5003:5000 -e ENVIRONMENT=production --name myapp-prod myapp:$VERSION
 
- Access the Application
+ ### Access the Application
 
 - Development: [http://localhost:5001](http://localhost:5001)
 - Staging: [http://localhost:5002](http://localhost:5002)
