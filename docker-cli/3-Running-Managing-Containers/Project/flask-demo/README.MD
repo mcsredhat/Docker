@@ -12,7 +12,7 @@ cd flask-demo
 
 docker build -t flask-redis-app:latest .
 
-Start a Redis container
+# Start a Redis container
 
 docker run -d --name redis redis:alpine
 
@@ -23,11 +23,11 @@ docker run -it --name flask-app -p 5000:5000 --link redis flask-redis-app:latest
 
 curl <http://localhost:5000>
 
-Stop the containers gracefully 
+# Stop the containers gracefully 
 
 docker stop flask-app redis
 
-Restart the containers
+# Restart the containers
 
 docker restart redis
 docker restart flask-app
