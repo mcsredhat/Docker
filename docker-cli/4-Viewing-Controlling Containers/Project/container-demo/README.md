@@ -21,6 +21,8 @@ container-demo/
 ├── scripts/             # Utility scripts for container management
 └── README.md            # This documentation
 
+
+
 ## Prerequisites
 - Docker Engine (version 19.03 or later)
 - Node.js (for local development)
@@ -53,43 +55,61 @@ docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}"
 ### Log Monitoring
 ```
 # Stream logs in real-time
+
 docker logs -f web-monitor
 ```
+
 # View recent logs
+
 docker logs --tail 5 web-monitor
 ```
 
 ### Container Health
 # Check container health status
+
 docker inspect --format "{{.State.Health.Status}}" web-monitor
 ```
+
 # List container processes
+
 docker top web-monitor
 ```
+
 ### Resource Monitoring
 # Monitor resource usage
+
 docker stats
 ```
 # Format output for specific metrics
+
 docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"
 ```
+
 ## Troubleshooting
 ### Diagnosing Container Issues
 # Check container exit code
+
 docker inspect --format "{{.State.ExitCode}}" container-name
+```
 
 # Extract network information
+
 docker inspect --format "{{range \$k, \$v := .NetworkSettings.Ports}}{{printf \"%s -> %s\" \$k (\$v | printf \"%s\" . | printf \"%s\" .)}}{{end}}" container-name
 ```
+
 ### Container Auditing
-```
 # Check container creation time
+```
 docker inspect --format "{{.Created}}" container-name
+```
 
 # List container mounts
+```
 docker inspect --format "{{range .Mounts}}{{.Source}} -> {{.Destination}} ({{.Mode}}){{println}}{{end}}" container-name
+```
 
 # Export container filesystem for analysis
+```
 docker export container-name > container-filesystem.tar
 ```
 ## Automated Management
@@ -99,9 +119,11 @@ The project includes utility scripts for automatic container management:
 - Resource monitoring and alerting
 
 ## Cleanup
-```
 # Remove the container
+```
 docker rm web-monitor
 ```
 # Remove the image
+```
 docker rmi container-monitor-demo:latest
+```
