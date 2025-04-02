@@ -91,11 +91,11 @@ docker inspect --format='Entrypoint: {{.Config.Entrypoint}}' nginx
 ```
 docker inspect --format='{{range .Config.Env}}{{println .}}{{end}}' <image>
 ```
-#Show Exposed Ports	
+# Show Exposed Ports	
 ```
 docker inspect --format='{{range $port, $_ := .Config.ExposedPorts}}{{$port}} {{end}}' <image>
 ```
-#Show Image Labels
+# Show Image Labels
 ```
 docker inspect --format='{{json .Config.Labels}}' <image>
 ```
