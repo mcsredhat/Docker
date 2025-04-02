@@ -1,39 +1,88 @@
-# Overview
+# Multi-Environment Image Management
 
-This project demonstrates how to build, tag, and run a Dockerized Python application across multiple environments (development, staging, and production) while following best practices.
+## Overview
+This project demonstrates Docker best practices for managing container images across multiple environments (development, staging, and production). It showcases techniques for image tagging, versioning, and environment-specific configuration for a Python Flask application.
 
-## Steps to Set Up & Run
+## Project Structure
+```
+docker-lesson-project/
+├── src/                  # Application source code directory
+│   └── app.py            # Flask application
+├── requirements.txt      # Python dependencies
+├── Dockerfile            # Container configuration
+└── README.md            # This documentation
+```
 
-1. Create Project Structure
-   - Organize application files and dependencies.
+## Features
+- Multi-environment Docker image management
+- Proper versioning and tagging strategies
+- Environment variable configuration
+- Docker security best practices
+- Container image portability
 
-2. Build the Docker Image
+## Prerequisites
+- Docker Engine (version 19.03 or newer)
+- Basic knowledge of Python and Flask
+- Basic understanding of Docker concepts
 
-   docker build -t myapp:latest .
+## Getting Started
 
-3. Tag the Image for Different Environments
+### Building the Base Image
+```
+docker build -t myapp:latest .
+```
 
-   VERSION="1.0.0"
-   docker tag myapp:latest myapp:$VERSION
-   docker tag myapp:latest myapp:$VERSION-dev
-   docker tag myapp:latest myapp:$VERSION-staging
+### Tagging for Different Environments
+```
+VERSION="1.0.0"
+COMMIT_ID=$(date +%s)  # Simulating a git commit hash
 
-4. Save & Transfer Development Image
+# Tag for different environments
+```
+docker tag myapp:latest myapp:$VERSION
+docker tag myapp:latest myapp:$VERSION-dev
+docker tag myapp:latest myapp:$VERSION-staging
+docker tag myapp:latest myapp:$VERSION-$COMMIT_ID
+```
 
-   docker save -o myapp-dev.tar myapp:$VERSION-dev
+### Exporting Images for Transfer
+```
+docker save -o myapp-dev.tar myapp:$VERSION-dev
+```
 
-5. Push to Docker Hub
-   docker tag myapp:$VERSION your-dockerhub-username/myapp:$VERSION
-   docker push your-dockerhub-username/myapp:$VERSION
+### Tagging for Docker Hub
+```
+docker tag myapp:$VERSION username/myapp:$VERSION
+docker tag myapp:$VERSION-staging username/myapp:staging
+```
 
-6. Run Containers in Different Environments
+### Running Environment-Specific Containers
+```
+# Development environment
+```
+docker run -d -p 5001:5000 -e ENVIRONMENT=development --name myapp-dev myapp:$VERSION-dev
+```
+# Staging environment
+```
+docker run -d -p 5002:5000 -e ENVIRONMENT=staging --name myapp-staging myapp:$VERSION-staging
+```
+# Production environment
+```
+docker run -d -p 5003:5000 -e ENVIRONMENT=production --name myapp-prod myapp:$VERSION
+```
 
-   docker run -d -p 5001:5000 -e ENVIRONMENT=development --name myapp-dev myapp:$VERSION-dev
-   docker run -d -p 5002:5000 -e ENVIRONMENT=staging --name myapp-staging myapp:$VERSION-staging
-   docker run -d -p 5003:5000 -e ENVIRONMENT=production --name myapp-prod myapp:$VERSION
+## Access Points
+- Development: http://localhost:5001
+- Staging: http://localhost:5002
+- Production: http://localhost:5003
 
- ### Access the Application
 
-- Development: [http://localhost:5001](http://localhost:5001)
-- Staging: [http://localhost:5002](http://localhost:5002)
-- Production: [http://localhost:5003](http://localhost:5003)
+## Additional Commands
+
+### Viewing Created Tags
+```
+docker images --format "{{.Repository}}:{{.Tag}}" | grep myapp
+```
+
+
+
