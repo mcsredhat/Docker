@@ -7,7 +7,6 @@ A comprehensive guide to tagging, managing, transferring, and sharing Docker ima
 1. [Understanding Image Tagging](#understanding-image-tagging)
 2. [Saving & Loading Images for Transfer](#saving--loading-images-for-transfer)
 3. [Pushing Images to Registries](#pushing-images-to-registries)
-4. [Best Practices](#best-practices)
 
 ## Understanding Image Tagging
 
