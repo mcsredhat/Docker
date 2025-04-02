@@ -34,7 +34,7 @@ docker build -t container-monitor-demo:latest .
 ```
 
 ### Running the Container
-```bash
+
 docker run -d -p 3000:3000 --name web-monitor container-monitor-demo:latest
 ```
 
@@ -46,50 +46,43 @@ docker run -d -p 3000:3000 --name web-monitor container-monitor-demo:latest
 ## Monitoring Commands
 
 ### Basic Container Status
-```bash
+
 docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}"
 ```
 
 ### Log Monitoring
-```bash
+```
 # Stream logs in real-time
 docker logs -f web-monitor
-
+```
 # View recent logs
 docker logs --tail 5 web-monitor
 ```
 
 ### Container Health
-```bash
 # Check container health status
 docker inspect --format "{{.State.Health.Status}}" web-monitor
-
+```
 # List container processes
 docker top web-monitor
 ```
-
 ### Resource Monitoring
-```bash
 # Monitor resource usage
 docker stats
-
+```
 # Format output for specific metrics
 docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"
 ```
-
 ## Troubleshooting
-
 ### Diagnosing Container Issues
-```bash
 # Check container exit code
 docker inspect --format "{{.State.ExitCode}}" container-name
 
 # Extract network information
 docker inspect --format "{{range \$k, \$v := .NetworkSettings.Ports}}{{printf \"%s -> %s\" \$k (\$v | printf \"%s\" . | printf \"%s\" .)}}{{end}}" container-name
 ```
-
 ### Container Auditing
-```bash
+```
 # Check container creation time
 docker inspect --format "{{.Created}}" container-name
 
@@ -99,7 +92,6 @@ docker inspect --format "{{range .Mounts}}{{.Source}} -> {{.Destination}} ({{.Mo
 # Export container filesystem for analysis
 docker export container-name > container-filesystem.tar
 ```
-
 ## Automated Management
 The project includes utility scripts for automatic container management:
 - Restarting unhealthy containers based on health checks
@@ -107,9 +99,9 @@ The project includes utility scripts for automatic container management:
 - Resource monitoring and alerting
 
 ## Cleanup
-```bash
+```
 # Remove the container
 docker rm web-monitor
-
+```
 # Remove the image
 docker rmi container-monitor-demo:latest
