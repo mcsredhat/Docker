@@ -1,0 +1,24 @@
+version: "3.8"
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file: .env
+    security_opt:
+      - "no-new-privileges:true"
+      - "seccomp:security/seccomp-profile.json"
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - db
+  db:
+    image: postgres:alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+volumes:
+  db_data:

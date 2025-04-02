@@ -84,89 +84,191 @@ docker run -it 6b1abe3a6d6c /bin/bash
 # Now you can explore the container state and try commands manually
 This technique allows you to interactively investigate the container state just before the failure occurred.
 
-### Practical Build Debugging Example
-Consider this problematic Dockerfile:
+ project with detailed explanations, organized files, and comprehensive documentation.
+Here's the project structure:
+/debug-example
+├── Dockerfile.bad
+├── Dockerfile.fixed
+├── Dockerfile.debug
+├── scripts/
+│   ├── debug.sh
+│   └── inspect.sh
+├── .env
+└── README.md
+1. Dockerfile.bad (Problematic Version)
+dockerfile
 FROM ubuntu:20.04
 RUN apt-get update && apt-get install -y python3
-RUN nonexistent-command  # Intentional error
+RUN nonexistent-command  # This will cause the build to fail
 CMD ["python3", "--version"]
+2. Dockerfile.fixed (Corrected Version)
+dockerfile
+FROM ubuntu:20.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install -y python3 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+RUN echo "Build step completed successfully"
+CMD ["python3", "--version"]
+3. Dockerfile.debug (Advanced Debugging Version)
+dockerfile
+# Build stage
+FROM ubuntu:20.04 AS build-stage
+ENV DEBIAN_FRONTEND=noninteractive
+RUN echo "DEBUG: Starting package installation" && \
+    apt-get update && \
+    echo "DEBUG: Package lists updated" && \
+    apt-get install -y --verbose-versions python3 && \
+    echo "DEBUG: Python installed" && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-Let's debug this step by step:
-1. **Attempt the build:**
-   docker build -t debug-example .
-   This will fail at the `nonexistent-command` step.
+# Test stage
+FROM build-stage AS test-stage
+RUN python3 --version
 
-2. **Examine the error message:**
-   Step 3/4 : RUN nonexistent-command
-    ---> Running in 7a2e8f3b6e1c
-   /bin/sh: 1: nonexistent-command: not found
-   The command '/bin/sh: 1: nonexistent-command: not found' returned a non-zero code: 127
-   The error code 127 indicates "command not found."
+# Final stage
+FROM build-stage
+LABEL maintainer="Debug Example <debug@example.com>"
+HEALTHCHECK CMD python3 --version || exit 1
+CMD ["python3", "--version"]
+4. scripts/debug.sh
+bash
+#!/bin/bash
+# Debug script for troubleshooting build issues
 
-3. **Launch an interactive shell using the last successful layer:**
-   # The ID will be different in your case
-   docker run -it abc123def456 /bin/bash
+echo "Attempting to build problematic Dockerfile..."
+docker build -f Dockerfile.bad -t debug-example:bad .
 
-4. **Try the command manually:**
-   nonexistent-command
-   # Output: bash: nonexistent-command: command not found
-5. **Fix the Dockerfile by replacing the problematic command:**
-   FROM ubuntu:20.04
-   RUN apt-get update && apt-get install -y python3
-   RUN echo "Command executed successfully"
-   CMD ["python3", "--version"]
-6. **Rebuild without cache:**
-   docker build --no-cache -t debug-example .
+echo -e "\nLast successful layer ID will be shown in error message above"
+echo "Enter the layer ID to debug (e.g., abc123def456):"
+read layer_id
 
-### Advanced Build Debugging Techniques
-1. **Use multi-stage builds to isolate issues:**
-   FROM ubuntu:20.04 as build-stage
-   RUN apt-get update && apt-get install -y python3
-   FROM build-stage as test-stage
-   RUN python3 --version
-   FROM build-stage
-   CMD ["python3", "--version"]
+if [ ! -z "$layer_id" ]; then
+    echo "Launching interactive shell in last successful layer..."
+    docker run -it "$layer_id" /bin/bash
+else
+    echo "No layer ID provided, skipping interactive debug"
+fi
 
-2. **Add debugging statements:**
-   ```dockerfile
-   RUN echo "DEBUG: About to install packages" && \
-       apt-get update && \
-       echo "DEBUG: Update completed" && \
-       apt-get install -y python3 && \
-       echo "DEBUG: Installation completed"
+echo -e "\nBuilding fixed version..."
+docker build --no-cache -f Dockerfile.fixed -t debug-example:fixed .
+5. scripts/inspect.sh
+bash
+#!/bin/bash
+# Container inspection script
 
-3. **Use verbose flags on commands:**
-   ```dockerfile
-   RUN apt-get update && apt-get install -y --verbose-versions python3
-## 3. Inspecting Container Details
-### The Power of `docker inspect`
-The `docker inspect` command provides detailed metadata about containers, helping diagnose runtime issues, configuration problems, and network connectivity issues.
-**Basic Syntax:**
-docker inspect <container-id-or-name> [options]
-**Key Options:**
-- `--format` or `-f`: Extract specific fields using Go templates
-- `--type`: Specify the type of object to inspect (container, image, volume, etc.)
+CONTAINER_NAME="debug-container"
 
-### Critical Information Revealed by Inspect
-When examining a container with `docker inspect`, pay attention to these important sections:
-1. **State**: Container status, exit code, start time, and error messages
-2. **Config**: Command, environment variables, working directory, and volumes
-3. **NetworkSettings**: IP address, port mappings, and network configuration
-4. **Mounts**: Volume and bind mount details
-5. **HostConfig**: Resource limits, restart policy, and runtime configuration
+echo "Starting container..."
+docker run -d --name "$CONTAINER_NAME" debug-example:fixed
 
-### Using Format Templates for Targeted Information
-The `--format` option allows you to extract specific information:
-# Get exit code and error message
-docker inspect --format '{{.State.ExitCode}} {{.State.Error}}' my-container
-# Get IP address
-docker inspect --format '{{.NetworkSettings.IPAddress}}' my-container
-# Get all environment variables
-docker inspect --format '{{range .Config.Env}}{{.}}{{println}}{{end}}' my-container
-# Get mounted volumes
-docker inspect --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}' my-container
+echo -e "\nBasic container info:"
+docker inspect "$CONTAINER_NAME" | head -n 20
 
-### Understanding Exit Codes
+echo -e "\nSpecific information using format templates:"
+echo "Exit Code and Error:"
+docker inspect --format '{{.State.ExitCode}} {{.State.Error}}' "$CONTAINER_NAME"
+echo "IP Address:"
+docker inspect --format '{{.NetworkSettings.IPAddress}}' "$CONTAINER_NAME"
+echo "Environment Variables:"
+docker inspect --format '{{range .Config.Env}}{{.}}{{println}}{{end}}' "$CONTAINER_NAME"
+echo "Mounted Volumes:"
+docker inspect --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}' "$CONTAINER_NAME"
+
+echo -e "\nCleaning up..."
+docker stop "$CONTAINER_NAME"
+docker rm "$CONTAINER_NAME"
+6. .env
+plaintext
+DEBUG_MODE=true
+CONTAINER_NAME=debug-container
+7. README.md
+markdown
+# Docker Build Debugging Example
+
+This project demonstrates debugging techniques for Docker builds and container inspection.
+
+## Project Structure
+- `Dockerfile.bad`: Problematic Dockerfile with intentional error
+- `Dockerfile.fixed`: Corrected version of the Dockerfile
+- `Dockerfile.debug`: Advanced version with debugging features
+- `scripts/debug.sh`: Build debugging script
+- `scripts/inspect.sh`: Container inspection script
+- `.env`: Environment variables
+
+## Debugging Process
+
+### Step 1: Identify Build Failure
+```bash
+chmod +x scripts/debug.sh
+./scripts/debug.sh
+Attempts to build the bad Dockerfile
+Shows the error message
+Allows interactive debugging of the last successful layer
+Step 2: Analyze the Failure
+Error code 127 indicates "command not found"
+Use the interactive shell to test commands
+Note the layer ID from the build output
+Step 3: Verify Fixed Version
+The fixed Dockerfile replaces the bad command with a working one
+Uses proper cleanup and environment variables
+Advanced Debugging Features
+The Dockerfile.debug includes:
+Multi-stage builds for isolation
+Debug statements between commands
+Verbose package installation
+Health checks
+Proper labeling
+Container Inspection
+bash
+chmod +x scripts/inspect.sh
+./scripts/inspect.sh
+This script demonstrates:
+Basic container inspection
+Formatted output for specific details
+Environment variable inspection
+Mount point verification
+Key Learning Points
+Build Debugging
+Use layer IDs to debug failed builds
+Interactive shell for testing
+No-cache builds for verification
+Container Inspection
+State monitoring
+Network configuration
+Resource settings
+Mount verification
+Best Practices
+Multi-stage builds
+Debug logging
+Environment variables
+Cleanup steps
+
+### How to Use This Project
+
+1. Clone or create the directory structure
+2. Make scripts executable:
+```bash
+chmod +x scripts/*.sh
+Run the debug script to see the failure and fix process:
+bash
+./scripts/debug.sh
+Build the debug version:
+bash
+docker build -f Dockerfile.debug -t debug-example:debug .
+Run the inspection script:
+bash
+./scripts/inspect.sh
+Explanation of Improvements
+Structured Approach: Separate files for different purposes
+Automation: Scripts for consistent debugging
+Documentation: Clear steps and explanations
+Advanced Features: Multi-stage builds and health checks
+Practical Tools: Inspection templates and debug statements
+Reproducibility: Environment variables and cleanup
+This project provides a comprehensive learning tool for Docker debugging while maintaining production-ready practices.### Understanding Exit Codes
 Exit codes provide valuable clues about why a container stopped:
 
 | Exit Code | Meaning | Common Cause |
@@ -296,4 +398,160 @@ Monitor resource consumption to identify potential bottlenecks:
 docker stats
 # Monitor specific container
 docker stats my-container
+
+==============================
+## Project Structure:
+/debug-example
+├── Dockerfile.bad
+├── Dockerfile.fixed
+├── Dockerfile.debug
+├── scripts/
+│   ├── debug.sh
+│   ├── inspect.sh
+├── .env
+├── .dockerignore
+└── README.md
+
+## Dockerfile.bad (Problematic Version)
+```dockerfile
+FROM ubuntu:20.04
+RUN apt-get update && apt-get install -y python3
+RUN nonexistent-command  # This will cause the build to fail
+CMD ["python3", "--version"]
+```
+
+## Dockerfile.fixed (Corrected Version)
+```dockerfile
+FROM ubuntu:20.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install -y python3 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+CMD ["python3", "--version"]
+```
+
+## Dockerfile.debug (Advanced Debugging Version)
+```dockerfile
+FROM ubuntu:20.04 AS build-stage
+ENV DEBIAN_FRONTEND=noninteractive
+RUN echo "DEBUG: Starting package installation" && \
+    apt-get update && \
+    echo "DEBUG: Package lists updated" && \
+    apt-get install -y --verbose-versions python3 && \
+    echo "DEBUG: Python installed" && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+FROM build-stage AS test-stage
+RUN python3 --version
+
+FROM build-stage
+LABEL maintainer="Debug Example <debug@example.com>"
+HEALTHCHECK CMD python3 --version || exit 1
+CMD ["python3", "--version"]
+```
+
+## scripts/debug.sh
+```bash
+#!/bin/bash
+# Debug script for troubleshooting build issues
+
+echo "Attempting to build problematic Dockerfile..."
+docker build -f Dockerfile.bad -t debug-example:bad .
+
+echo -e "\nLast successful layer ID will be shown in error message above"
+echo "Enter the layer ID to debug (e.g., abc123def456):"
+read layer_id
+
+if [ ! -z "$layer_id" ]; then
+    echo "Launching interactive shell in last successful layer..."
+    docker run -it "$layer_id" /bin/bash
+else
+    echo "No layer ID provided, skipping interactive debug"
+fi
+
+echo -e "\nBuilding fixed version..."
+docker build --no-cache -f Dockerfile.fixed -t debug-example:fixed .
+```
+
+## scripts/inspect.sh
+```bash
+#!/bin/bash
+# Container inspection script
+
+CONTAINER_NAME="debug-container"
+
+echo "Starting container..."
+docker run -d --name "$CONTAINER_NAME" debug-example:fixed
+
+echo -e "\nBasic container info:"
+docker inspect "$CONTAINER_NAME" | head -n 20
+
+echo -e "\nSpecific information using format templates:"
+echo "Exit Code and Error:"
+docker inspect --format '{{.State.ExitCode}} {{.State.Error}}' "$CONTAINER_NAME"
+echo "IP Address:"
+docker inspect --format '{{.NetworkSettings.IPAddress}}' "$CONTAINER_NAME"
+echo "Environment Variables:"
+docker inspect --format '{{range .Config.Env}}{{.}}{{println}}{{end}}' "$CONTAINER_NAME"
+echo "Mounted Volumes:"
+docker inspect --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}' "$CONTAINER_NAME"
+
+echo -e "\nCleaning up..."
+docker stop "$CONTAINER_NAME"
+docker rm "$CONTAINER_NAME"
+```
+
+## .env
+```plaintext
+DEBUG_MODE=true
+CONTAINER_NAME=debug-container
+```
+
+## .dockerignore
+```plaintext
+.env
+*.log
+cache/
+```
+
+## README.md
+```markdown
+# Docker Build Debugging Example
+
+## Overview
+This project provides an example of debugging Docker builds and inspecting running containers.
+
+### Structure
+- `Dockerfile.bad`: Contains an intentional error
+- `Dockerfile.fixed`: Corrected version
+- `Dockerfile.debug`: Debugging-enhanced version
+- `scripts/debug.sh`: Helps debug failed builds
+- `scripts/inspect.sh`: Inspects running containers
+- `.env`: Configurable environment variables
+- `.dockerignore`: Ignoring unnecessary files
+
+### How to Use
+1. Make scripts executable:
+```bash
+chmod +x scripts/*.sh
+```
+
+2. Run the debug script:
+```bash
+./scripts/debug.sh
+```
+
+3. Run the inspection script:
+```bash
+./scripts/inspect.sh
+```
+
+### Best Practices
+- Use multi-stage builds
+- Implement log management
+- Configure environment variables properly
+- Monitor health status of containers
+
 

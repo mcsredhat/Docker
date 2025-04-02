@@ -1,0 +1,17 @@
+FROM ubuntu:20.04 AS build-stage
+ENV DEBIAN_FRONTEND=noninteractive
+RUN echo "DEBUG: Starting package installation" && \
+    apt-get update && \
+    echo "DEBUG: Package lists updated" && \
+    apt-get install -y --verbose-versions python3 && \
+    echo "DEBUG: Python installed" && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+FROM build-stage AS test-stage
+RUN python3 --version
+
+FROM build-stage
+LABEL maintainer="Debug Example <debug@example.com>"
+HEALTHCHECK CMD python3 --version || exit 1
+CMD ["python3", "--version"]

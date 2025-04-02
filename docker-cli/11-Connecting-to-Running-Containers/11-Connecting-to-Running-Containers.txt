@@ -321,3 +321,131 @@ docker restart api
 # Verify the fix worked
 curl http://localhost:8080/api/health
 This systematic approach demonstrates how to effectively use `docker exec` to diagnose and resolve issues across multiple containers.
+
+
+project :
+## Project Structure
+
+project-root/
+├── Dockerfile
+├── docker-compose.yml
+├── .env
+├── app/
+│   ├── main.py
+│   ├── config/
+│   │   ├── settings.py
+│   ├── logs/
+│   │   ├── app.log
+│   ├── scripts/
+│   │   ├── entrypoint.sh
+│   │   ├── debug.sh
+│   ├── requirements.txt
+├── security/
+│   ├── seccomp-profile.json
+
+## Dockerfile
+```
+FROM python:3.9-alpine
+WORKDIR /app
+COPY . /app
+RUN pip install --no-cache-dir -r requirements.txt
+CMD ["python", "main.py"]
+```
+
+## docker-compose.yml
+```
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file: .env
+    security_opt:
+      - "no-new-privileges:true"
+      - "seccomp:security/seccomp-profile.json"
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - db
+  db:
+    image: postgres:alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+volumes:
+  db_data:
+```
+
+## .env
+```
+APP_ENV=production
+DB_USER=admin
+DB_PASS=securepassword
+DB_HOST=db
+DB_PORT=5432
+```
+
+## app/main.py
+```
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Hello, Docker!"
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
+```
+
+## app/config/settings.py
+```
+import os
+
+class Config:
+    ENV = os.getenv("APP_ENV", "development")
+    DB_USER = os.getenv("DB_USER", "user")
+    DB_PASS = os.getenv("DB_PASS", "password")
+    DB_HOST = os.getenv("DB_HOST", "localhost")
+    DB_PORT = os.getenv("DB_PORT", 5432)
+```
+
+## app/logs/app.log
+```
+# Log file (empty, gets filled at runtime)
+```
+
+## app/scripts/entrypoint.sh
+```
+#!/bin/sh
+echo "Starting Application..."
+exec "$@"
+```
+
+## app/scripts/debug.sh
+```
+#!/bin/sh
+echo "Connecting to running container..."
+docker exec -it $(docker ps -q --filter "name=app") sh
+```
+
+## app/requirements.txt
+```
+flask
+```
+
+## security/seccomp-profile.json
+```
+{
+    "defaultAction": "SCMP_ACT_ERRNO",
+    "architectures": ["SCMP_ARCH_X86_64"],
+    "syscalls": [
+        { "names": ["read", "write", "exit", "fstat"], "action": "SCMP_ACT_ALLOW" }
+    ]
+}
+```
+
