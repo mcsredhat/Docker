@@ -1,10 +1,8 @@
-/# Docker Build Debugging Example/
-
-/## Overview
+# Docker Build Debugging Example/
+## Overview
 This project provides an example of debugging Docker builds and inspecting running containers.
-
-/===============================================
-/### Structure ###
+===============================================
+### Structure ###
 - `Dockerfile.bad`: Contains an intentional error
 - `Dockerfile.fixed`: Corrected version
 - `Dockerfile.debug`: Debugging-enhanced version
@@ -12,23 +10,12 @@ This project provides an example of debugging Docker builds and inspecting runni
 - `scripts/inspect.sh`: Inspects running containers
 - `.env`: Configurable environment variables
 - `.dockerignore`: Ignoring unnecessary files
-/===============================================/
-/### How to Use
-
-/# Make scripts executable:
+===============================================
+### How to Use
+# Make scripts executable:
 chmod +x scripts/*.sh
-
-/#Run the debug script:
-
+# Run the debug script:
 ./scripts/debug.sh
-/===============================================/
-
-/# Run the inspection script:
-
+===============================================
+# Run the inspection script:
 ./scripts/inspect.sh
-
-/### Best Practices
-- Use multi-stage builds
-- Implement log management
-- Configure environment variables properly
-- Monitor health status of containers/ 
