@@ -111,7 +111,7 @@ docker run -d --name web-host --network host nginx:latest
 
 | Feature        | Custom Bridge      | Default Bridge |         Host                  |
 |----------------|--------------------|----------------|-------------------------------|
-| Isolation      | Strong             | Strong         |         Minimal               |
+| Isolation      | Strong             | Strong         |            Minimal            |
 | DNS Resolution | Automatic          | Manual         |            Uses host's        |
 | Performance    | Good               | Good           |            Excellent          |
 | Port Mapping   | Required           | Required       |            Not needed         |
@@ -159,15 +159,15 @@ docker inspect -f '{{range $k, $v := .NetworkSettings.Ports}}{{$k}} -> {{(index 
 ### Common Service Ports
 
 | Service                | Default Container Port | Typical Host Mapping |                    Notes                        |
-|------------------------|------------------------|----------------------|----------------------------------------------- -|
-| Web Server (HTTP)      |       80               |       8080:80        |  Using 8080 avoids privileged port restrictions |
-| Web Server (HTTPS)     |       443              |       8443:443       |  Using 8443 avoids privileged port restrictions |
+|------------------------|------------------------|----------------------|-------------------------------------------------|
+| Web Server (HTTP)      |       80               |       8080:80        | Using 8080 avoids privileged port restrictions  |
+| Web Server (HTTPS)     |       443              |       8443:443       | Using 8443 avoids privileged port restrictions  |
 | Node.js                |       3000             |       3000:3000      | Common for Express applications                 |
 | MySQL/MariaDB          |       3306             |       3306:3306      | Database access                                 |
 | PostgreSQL             |       5432             |       5432:5432      | Database access                                 |
 | MongoDB                |       27017            |       27017:27017    | Database access                                 |
 | Redis                  |       6379             |       6379:6379      | Caching and message broker                      |
-| Elasticsearch          |       9200             | 9200:9200            | Search engine HTTP interface |
+| Elasticsearch          |       9200             |       9200:9200      | Search engine HTTP interface                    |
 
 ## Example: Node.js with MongoDB
 
