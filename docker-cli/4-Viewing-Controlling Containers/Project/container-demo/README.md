@@ -18,7 +18,6 @@ container-demo/
 ├── app/
 │   └── server.js        # Node.js web server with health endpoints
 ├── Dockerfile           # Container configuration
-├── scripts/             # Utility scripts for container management
 └── README.md            # This documentation
 ```
 
