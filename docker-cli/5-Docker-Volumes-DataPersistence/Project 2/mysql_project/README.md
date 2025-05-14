@@ -51,7 +51,8 @@ docker compose up -d
 ```
 
 ```
-docker exec mysql-demo mysql -uroot -prootpass -e "SELECT * FROM mydb.test;"
+docker exec mysql-demo mysql -uroot -prootpass -e "SELECT * FROM demo.test;"
+
 ```
 
 ## Configuration Files
