@@ -43,7 +43,10 @@ MYSQL_DATABASE=mydb
 You can add data to the MySQL database using the following command:
 
 ```
-docker exec -it mysql-demo mysql -uroot -prootpass -e "CREATE TABLE test (id INT, value VARCHAR(20)); INSERT INTO test VALUES (1, 'Docker');"
+docker exec -it mysql-demo mysql -uroot -prootpass -e "CREATE DATABASE demo;"
+docker exec -it mysql-demo mysql -uroot -prootpass -D demo -e "CREATE TABLE test (id INT, value VARCHAR(20));"
+docker exec -it mysql-demo mysql -uroot -prootpass -D demo -e "SHOW TABLES;"
+
 ```
 
 ### Connecting to the Database
@@ -59,7 +62,7 @@ docker exec -it mysql-demo mysql -uroot -prootpass
 You can execute SQL commands directly:
 
 ```
-docker exec -it mysql-demo mysql -uroot -prootpass -e "SELECT * FROM mydb.test;"
+docker exec -it mysql-demo mysql -uroot -prootpass -e "SELECT * FROM demo.test;"
 ```
 
 ## Testing Persistence
