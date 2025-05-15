@@ -1,16 +1,14 @@
-version: "3.8"
+version: '3.8'
 services:
   sqlite:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: sqlite-demo
     volumes:
       - db-volume:/data
     env_file:
       - .env
-    command: ["sqlite3", "$DB_FILE"]
-    networks:
-      - app-network
-
 volumes:
   db-volume:
 
