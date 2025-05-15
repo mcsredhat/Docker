@@ -82,7 +82,7 @@ docker exec -it mysql-demo mysql -uroot -prootpass -e "SELECT * FROM demo.test;"
 3. **Verify that data persisted**
 
    ```
-   docker exec mysql-demo mysql -uroot -prootpass -e "SELECT * FROM mydb.test;"
+   docker exec mysql-demo mysql -uroot -prootpass -e "SELECT * FROM demo.test;"
    ```
 
    If you see the previously added records, your persistent storage is working correctly.
