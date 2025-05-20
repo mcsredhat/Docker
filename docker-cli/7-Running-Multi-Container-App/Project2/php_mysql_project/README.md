@@ -59,7 +59,7 @@ The application uses environment variables defined in the `.env` file:
 
 ### Prerequisites
 
-- Docker and Docker Compose installed on your system
+- Docker and Docker Compose are installed on your system
 
 ### Deployment Steps
 
@@ -74,7 +74,13 @@ The application uses environment variables defined in the `.env` file:
 2. **Access the Applications**
 
    - **PHP App:** [http://localhost:8080](http://localhost:8080)
+     ```
+     curl http://localhost:8080
+     ```
    - **Adminer:** [http://localhost:8081](http://localhost:8081)
+     ```
+     curl http://localhost:8081
+     ```
 
    For Adminer, use these login credentials:
    - System: MySQL
