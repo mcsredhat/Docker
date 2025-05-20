@@ -1,0 +1,89 @@
+: Create container for MailHog data**
+### ✅ **Step A: Create a Docker network (if not already created)**
+
+
+docker network create \
+  --driver=bridge \
+  --subnet=172.16.16.0/24 \
+  --gateway=172.16.16.1 \
+  --ip-range=172.16.16.0/24 \
+  --attachable \
+  my-network
+
+
+---
+
+### ✅ **Step B: Create host directories for MailHog data**
+
+
+sudo mkdir -p /host/mailhog/data
+sudo chown -R $(id -u):$(id -g) /host/mailhog
+
+
+---
+
+### ✅ **Step C: Run the MailHog container with enhanced security settings**
+
+
+docker run \
+  --name mailhog \
+  --hostname mailhog.local \
+  --detach \
+  --label app=mailhog \
+  --label environment=production \
+  --network my-network \
+  --ip 172.16.16.199 \
+  --publish 1025:1025 \                # SMTP interface
+  --publish 8025:8025 \                # Web UI
+  --memory=128m \
+  --cpus="0.5" \
+  --pids-limit=100 \
+  --user 2001:2001 \                   # Run as non-root user
+  --env TZ=UTC \
+  --read-only \                        # Filesystem security
+  --tmpfs /tmp:rw,size=10m \           # Ephemeral /tmp
+  --volume /host/mailhog/data:/MailHog/data \  # Persistent data
+  --cap-drop=ALL \
+  --cap-add=CHOWN \
+  --cap-add=SETUID \
+  --cap-add=SETGID \
+  --security-opt no-new-privileges:true \
+  --restart unless-stopped \
+  --health-cmd="curl -s http://127.0.0.1:8025/api/v2/messages || exit 1" \
+  --health-interval=30s \
+  --health-timeout=10s \
+  --health-retries=3 \
+  --health-start-period=10s \
+  mailhog/mailhog
+
+---
+
+### ✅ **Step D: Confirm the container is running**
+
+
+docker ps | grep mailhog
+
+
+You should see a container named `mailhog` in the output.
+
+---
+
+### ✅ **Step E: Access the MailHog shell (if needed)**
+
+
+docker exec -it mailhog sh
+
+
+This opens an interactive shell session in the running MailHog container. Use it for debugging or inspection.
+
+---
+
+### ✅ **Step F: Test MailHog**
+
+* Open your browser and go to: `http://localhost:8025`
+
+  * This opens MailHog’s web interface.
+* To send test emails to MailHog:
+
+  * Configure your application to send SMTP mail to `localhost:1025`
+

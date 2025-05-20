@@ -1,0 +1,119 @@
+
+## ✅ **A. Prepare the Host Directories and Config Files**
+
+### 1. Create necessary directories on host:
+
+```bash
+sudo mkdir -p /host/elasticsearch/config
+sudo mkdir -p /host/elasticsearch/data
+```
+
+### 2. Create `elasticsearch.yml` configuration:
+
+```bash
+sudo tee /host/elasticsearch/config/elasticsearch.yml > /dev/null <<EOF
+cluster.name: docker-cluster
+network.host: 0.0.0.0
+discovery.type: single-node
+xpack.security.enabled: false
+EOF
+```
+
+### 3. Create required `log4j2.properties` file:
+
+```bash
+sudo tee /host/elasticsearch/config/log4j2.properties > /dev/null <<EOF
+status = error
+name = Default
+appender.console.type = Console
+appender.console.name = console
+appender.console.layout.type = PatternLayout
+appender.console.layout.pattern = [%d{ISO8601}] [%t] %-5p %c %marker - %m%n
+
+rootLogger.level = info
+rootLogger.appenderRef.console.ref = console
+EOF
+```
+
+### 4. Ensure correct ownership:
+
+```bash
+# Elasticsearch uses UID 1000 internally
+sudo chown -R 1000:1000 /host/elasticsearch
+```
+
+---
+
+## ✅ **B. Run the Elasticsearch Docker Container**
+
+Now run Elasticsearch using the following secure and production-ready `docker run` command:
+
+```bash
+docker run \
+  --name elastic-backend \
+  --hostname elastic-host \
+  --detach \
+  --label app=elasticsearch \
+  --label environment=production \
+  --network my-network \
+  --ip 172.16.16.112 \
+  --publish 9200:9200 \
+  --publish 9300:9300 \
+  --memory=2g \
+  --cpus="1.0" \
+  --pids-limit=200 \
+  --env TZ=UTC \
+  --env discovery.type=single-node \
+  --env ES_JAVA_OPTS="-Xms1g -Xmx1g" \
+  --volume /host/elasticsearch/data:/usr/share/elasticsearch/data \
+  --volume /host/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro \
+  --volume /host/elasticsearch/config/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties:ro \
+  --cap-drop=ALL \
+  --cap-add=CHOWN \
+  --cap-add=SETUID \
+  --cap-add=SETGID \
+  --security-opt no-new-privileges:true \
+  --restart unless-stopped \
+  --health-cmd="curl -f http://localhost:9200/ || exit 1" \
+  --health-interval=20s \
+  --health-timeout=10s \
+  --health-retries=3 \
+  --health-start-period=20s \
+  docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+```
+
+---
+
+## ✅ **C. Validate the Setup**
+
+### 1. Check logs:
+
+```bash
+docker logs -f elastic-backend
+```
+
+### 2. Test Elasticsearch is working:
+
+```bash
+curl http://localhost:9200
+```
+
+Expected output:
+
+```json
+{
+  "name" : "elastic-host",
+  "cluster_name" : "docker-cluster",
+  ...
+}
+```
+
+### 3. Shell into the container (optional):
+
+```bash
+docker exec -it elastic-backend bash
+```
+
+---
+
+Let me know if you'd like to add security (TLS, users, passwords) or connect this to Kibana.

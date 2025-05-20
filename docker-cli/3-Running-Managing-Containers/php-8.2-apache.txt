@@ -1,0 +1,166 @@
+### Step-by-Step Instructions to Run the Docker Command Without Errors
+
+#### 1. **Check the `/host/php` Directory on the Host**
+
+* Ensure that the `/host/php` directory and its contents exist. You can check this by running:
+
+
+sudo ls /host/php/
+
+
+This should list the contents, which should include `conf`, `index.php`, and `start.sh` as shown below:
+
+
+conf  index.php  start.sh
+
+
+#### 2. **Check the PHP Configuration File (`index.php`)**
+
+* Open the `index.php` file to verify it contains the PHP info function:
+
+
+sudo cat /host/php/index.php
+
+
+It should output:
+
+php
+<?php phpinfo(); ?>
+
+
+#### 3. **Check the Start Script (`start.sh`)**
+
+* Open the `start.sh` script to ensure it is designed to start Apache and set up the necessary directory structure:
+
+
+sudo cat /host/php/start.sh
+
+
+The script should be as follows:
+
+
+#!/bin/sh
+# Ensure the directory exists and is owned by www-data
+mkdir -p /var/run/apache2
+chown www-data:www-data /var/run/apache2
+
+# Start Apache as www-data using gosu (if installed)
+if command -v gosu >/dev/null 2>&1; then
+  exec gosu www-data /usr/local/bin/docker-php-entrypoint apache2-foreground
+else
+  # Fallback: just run as current user
+  exec /usr/local/bin/docker-php-entrypoint apache2-foreground
+fi
+
+
+#### 4. **Check the PHP Configuration File (`php.ini`)**
+
+* Open the `php.ini` file to ensure it has the correct time zone configuration:
+
+
+sudo cat /host/php/conf/php.ini
+
+
+It should contain:
+
+ini
+date.timezone = UTC
+
+
+#### 5. **Create the Apache Configuration (`apache.conf`)**
+
+* Open the `apache.conf` file to set the `ServerName` directive to avoid errors related to the server's fully qualified domain name:
+
+
+sudo vi /host/php/conf/apache.conf
+
+
+Add the following line:
+
+ServerName localhost
+
+
+#### 6. **Run the Docker Container**
+
+Now, run the following `docker run` command to start the container:
+
+
+docker run \
+  --name my-php \
+  --hostname php-host \
+  --label app=backend \
+  --label tier=application \
+  --label environment=production \
+  --detach \
+  --env TZ=UTC \
+  --env APACHE_LOCK_DIR=/tmp/apache-lock \
+  --memory=1g \
+  --cpus="1.5" \
+  --pids-limit=200 \
+  --network my-network \
+  --ip 172.16.16.102 \
+  --dns 8.8.8.8 \
+  --dns 1.1.1.1 \
+  --volume /host/php:/var/www/html:ro \
+  --volume /host/php/conf/php.ini:/usr/local/etc/php/php.ini:ro \
+  --volume /host/php/conf/apache.conf:/etc/apache2/conf-available/servername.conf:ro \
+  --tmpfs /tmp:rw,size=64m,mode=1777 \
+  --tmpfs /run:rw,size=64m,mode=1777 \
+  --tmpfs /run/lock:rw,size=1m,mode=755 \
+  --tmpfs /var/log/apache2:rw,size=100m,mode=1777 \
+  --tmpfs /var/run:rw,size=100m,mode=1777 \
+  --tmpfs /var/run/apache2:rw,size=10m,mode=755 \
+  --cap-drop=ALL \
+  --cap-add=CHOWN \
+  --cap-add=SETUID \
+  --cap-add=SETGID \
+  --security-opt no-new-privileges:true \
+  --read-only \
+  --restart unless-stopped \
+  --health-cmd="curl -f http://localhost/ || exit 1" \
+  --health-interval=20s \
+  --health-timeout=5s \
+  --health-retries=3 \
+  --health-start-period=15s \
+  --log-driver=json-file \
+  --log-opt max-size=5m \
+  --log-opt max-file=2 \
+  --log-opt compress=true \
+  --user root \
+  --publish 8080:80 \
+  --privileged \
+  --entrypoint "/bin/bash" \
+  php:8.2-apache \
+  -c "mkdir -p /var/run/apache2 && chown www-data:www-data /var/run/apache2 && /usr/local/bin/docker-php-entrypoint apache2-foreground"
+
+
+#### 7. **Verify the Container is Running**
+
+Check if the container is running with the following command:
+
+docker ps
+
+This will list all running containers, and you should see your `my-php` container listed.
+
+#### 8. **Check Container Logs**
+
+To verify if Apache started correctly, check the container logs:
+
+docker logs my-php
+
+#### 9. **Test the Application**
+
+* To test if the application is accessible, run:
+
+curl http://localhost:8080
+
+If everything is set up correctly, you should see the PHP info page.
+
+#### 10. **Access the Container's Shell**
+
+If you need to troubleshoot or access the container directly, run:
+
+docker exec -it my-php sh
+
+This will give you an interactive shell inside the container.
+

@@ -1,0 +1,144 @@
+ secure setup for running Redis in Docker using `docker run`** 
+
+This guide includes:
+
+* Creating a Docker network
+* Adding a secure non-root user
+* Preparing config and volumes
+* Writing a hardened `redis.conf`
+* Running `docker run` securely with `--user`, `--read-only`, etc.
+* Health checks and logging
+---
+
+### ✅ Step 1: Create a secure Docker network
+
+
+docker network create \
+  --driver=bridge \
+  --subnet=172.16.16.0/24 \
+  --gateway=172.16.16.1 \
+  --ip-range=172.16.16.0/24 \
+  --attachable \
+  my-network
+
+
+---
+
+### ✅ Step 2: Create non-root user on host
+
+Create a non-root user/group (e.g., `redix`) for the container to run as.
+
+
+sudo groupadd -g 2001 redix
+sudo useradd -u 2001 -g redix -s /sbin/nologin -M redix
+
+
+---
+
+### ✅ Step 3: Prepare directories and ownership
+
+
+sudo mkdir -p /host/redis/data
+sudo mkdir -p /host/redis/conf
+
+# Set ownership for non-root Redis user
+sudo chown -R 2001:2001 /host/redis
+
+
+---
+
+### ✅ Step 4: Create and secure `redis.conf`
+
+Create `/host/redis/conf/redis.conf` with hardened settings:
+
+
+sudo nano /host/redis/conf/redis.conf
+
+
+Paste this:
+
+ini
+bind 0.0.0.0
+protected-mode no
+port 6379
+daemonize no
+requirepass rooté&--
+dir /data
+
+# Security: disable dangerous commands
+rename-command FLUSHDB ""
+rename-command FLUSHALL ""
+rename-command CONFIG ""
+rename-command SHUTDOWN ""
+rename-command SAVE ""
+rename-command BGREWRITEAOF ""
+rename-command BGSAVE ""
+
+# Resource control
+maxclients 100
+maxmemory 100mb
+maxmemory-policy allkeys-lru
+
+# Logging
+loglevel notice
+logfile ""
+
+
+> 🔐 Replace `myStrongPassword123` with a strong password.
+
+---
+
+### ✅ Step 5: Run Redis securely with Docker
+
+
+docker run \
+  --name secure-redis \
+  --hostname redis-host \
+  --detach \
+  --label app=redis \
+  --label environment=production \
+  --network my-network \
+  --ip 172.16.16.111 \
+  --publish 6379:6379 \
+  --memory=128m \
+  --cpus="0.5" \
+  --pids-limit=100 \
+  --user 2001:2001 \
+  --env TZ=UTC \
+  --read-only \
+  --tmpfs /tmp:rw,size=10m \
+  --volume /host/redis/data:/data \
+  --volume /host/redis/conf/redis.conf:/usr/local/etc/redis/redis.conf:ro \
+  --cap-drop=ALL \
+  --cap-add=CHOWN \
+  --cap-add=SETUID \
+  --cap-add=SETGID \
+  --security-opt no-new-privileges:true \
+  --restart unless-stopped \
+  --health-cmd="redis-cli -a rooté&-- ping || exit 1" \
+  --health-interval=30s \
+  --health-timeout=10s \
+  --health-retries=3 \
+  --health-start-period=10s \
+  redis:7.2-alpine \
+  redis-server /usr/local/etc/redis/redis.conf
+
+
+---
+
+### ✅ Step 6: Validate Redis is working
+
+
+# Check container is up
+docker ps | grep secure-redis
+
+# Check Redis logs
+docker logs secure-redis
+
+# Test connection (from host or another container)
+docker exec -it secure-redis sh
+
+
+
+---
+

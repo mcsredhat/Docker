@@ -1,0 +1,109 @@
+
+### 2. **Ensure Network is Set Up**
+
+# Ensure that the Docker network `my-network` exists. If it does not, you can create it using:
+docker network ls
+
+#if not created 
+
+docker network create --driver bridge my-network
+
+
+---
+
+### 3. **Verify Permissions on Host Volume**
+
+Ensure that the directory `/host/jenkins_home` on your host system is accessible by Docker and that it has the appropriate permissions.
+
+To set the correct permissions for `/host/jenkins_home`:
+
+sudo mkdir /host/jenkins_home
+sudo chown -R 1000:1000 /host/jenkins_home
+sudo chmod 755 /host/jenkins_home
+
+
+This ensures that the `jenkins` container has read/write permissions to the host directory.
+
+
+### 4. **Run the Docker Command**
+
+Once you’ve verified the prerequisites and set up everything, execute the `docker run` command. Make sure you're using the correct path for `/host/jenkins_home`.
+
+
+docker run -d \
+  --name jenkins-server \
+  --hostname jenkins-host \
+  --network my-network \
+  --ip 172.16.16.114 \
+  --publish 8088:8080 \
+  --publish 50050:50000 \
+  --env TZ=UTC \
+  --memory=4g \
+  --cpus="2.0" \
+  --pids-limit=500 \
+  --restart unless-stopped \
+  --volume /host/jenkins_home:/var/jenkins_home \
+  --label app=jenkins \
+  --label environment=production \
+  --health-cmd="curl --fail http://localhost:8080 || exit 1" \
+  --health-interval=30s \
+  --health-retries=3 \
+  --health-timeout=10s \
+  --health-start-period=15s \
+  jenkins/jenkins:lts
+
+
+### 6. **Check the Container Status**
+
+After executing the command, confirm the container is running using:
+
+
+docker ps
+
+
+You should see the `jenkins-server` container listed as running.
+
+### 7. **Access Jenkins Web Interface**
+
+Once the container is up and running, open your browser and go to:
+
+
+http://localhost:8080
+
+
+In your case, replace `<host-ip>` with the server’s IP address, which is `172.16.16.114`. So you should visit:
+
+
+http://172.16.16.114:8088
+
+
+You should see the Jenkins setup wizard.
+
+### 8. **Unlock Jenkins (First Time Setup)**
+
+* Jenkins generates an initial password during the first startup.
+* To retrieve the password, run the following command:
+
+
+docker exec jenkins-server cat /var/jenkins_home/secrets/initialAdminPassword
+
+
+This will print the Jenkins unlock password to the console. Copy it.
+
+* Paste this password into the web interface to unlock Jenkins.
+
+### 9. **Install Suggested Plugins**
+
+After unlocking Jenkins, you will be prompted to install the recommended plugins. It’s best to install the suggested plugins unless you have specific needs for a custom setup.
+
+### 10. **Create an Admin User**
+
+Once the plugins are installed, you will be asked to create an admin user. Provide the necessary details and proceed.
+
+---
+
+### 11. **Verify Jenkins Functionality**
+
+* After Jenkins is set up, you can verify that it is working by creating a simple job (e.g., a Freestyle project) and running it.
+* You can also install additional plugins such as Git or Docker to extend Jenkins functionality.
+
