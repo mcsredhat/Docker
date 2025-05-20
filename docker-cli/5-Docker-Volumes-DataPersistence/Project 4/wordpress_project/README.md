@@ -20,7 +20,6 @@ This project demonstrates how to deploy WordPress with persistent storage for bo
 ```
 wordpress_project/
 ├── docker-compose.yml  # Docker Compose configuration
-├── .env                # Environment variables
 └── README.md           # This documentation
 ```
 

@@ -39,7 +39,7 @@ docker run -d --name redis redis:alpine
 
 #### 2. Start the Flask Application
 ```
-docker run -it --name flask-app -p 5000:5000 --link redis flask-redis-app:latest
+docker run -it --name my-flask-app -p 5000:5000 --link redis my-flask-app:latest
 ```
 
 ### Testing the Application

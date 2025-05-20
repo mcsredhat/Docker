@@ -50,7 +50,8 @@ The application uses environment variables defined in the `.env` file for config
 
    Open  in your browser.
     ```
-   http://localhost:3000](http://localhost:3000
+   http://localhost:3000
+   curl http://localhost:3000
    ```
    You should see a page displaying the message: "Hello! This page has been visited X times."
 

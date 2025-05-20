@@ -1,0 +1,30 @@
+version: '3.8'
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - app-network
+
+  node-app:
+    build: .
+    container_name: node-app
+    depends_on:
+      - mongodb
+    ports:
+      - "3000:3000"
+    networks:
+      - app-network
+    env_file:
+      - .env
+
+volumes:
+  mongodb-data:
+
+networks:
+  app-network:

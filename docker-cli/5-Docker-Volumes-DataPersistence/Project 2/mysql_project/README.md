@@ -32,9 +32,14 @@ docker compose up -d
 
 ### 2. Add Test Data
 ```
-docker exec -it mysql-demo mysql -uroot -prootpass -e "CREATE TABLE test (id INT, value VARCHAR(20)); INSERT INTO test VALUES (1, 'Docker');"
+docker exec -it mysql-demo mysql -uroot -prootpass -e "CREATE DATABASE demo;"
 ```
-
+```
+docker exec -it mysql-demo mysql -uroot -prootpass -D demo -e "CREATE TABLE test (id INT, value VARCHAR(20));"
+```
+```
+docker exec -it mysql-demo mysql -uroot -prootpass -D demo -e "SHOW TABLES;"
+```
 ### 3. Verify Data Persistence
 Stop and restart the container, then check if data persists:
 ```
@@ -46,7 +51,8 @@ docker compose up -d
 ```
 
 ```
-docker exec mysql-demo mysql -uroot -prootpass -e "SELECT * FROM mydb.test;"
+docker exec mysql-demo mysql -uroot -prootpass -e "SELECT * FROM demo.test;"
+
 ```
 
 ## Configuration Files
