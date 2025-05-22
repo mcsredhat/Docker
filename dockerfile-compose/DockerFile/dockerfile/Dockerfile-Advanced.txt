@@ -4,6 +4,7 @@
 
 Labels provide a way to attach structured metadata to your Docker images, making them more organized and searchable.
 
+```dockerfile
 # Add labels to your image for documentation, versioning, and organization
 # Each LABEL instruction adds metadata as key-value pairs
 LABEL maintainer="sarah.dev@example.com" \
@@ -11,6 +12,7 @@ LABEL maintainer="sarah.dev@example.com" \
       description="API service for user authentication" \
       org.opencontainers.image.created="2023-09-15" \
       com.company.team="authentication"
+```
 
 These labels don't affect how the container runs but provide important documentation. Think of labels like tags on library books—they help categorize and provide information about what's inside without changing the content itself. You can later filter and find images using these labels with `docker image ls --filter "label=maintainer=sarah.dev@example.com"`.
 
@@ -18,7 +20,7 @@ These labels don't affect how the container runs but provide important documenta
 
 The USER instruction helps implement the principle of least privilege by specifying which user the container should run as.
 
-
+```dockerfile
 # Create a non-root user and group for running the application
 # This creates a system user with no home directory and no shell
 RUN addgroup --system appgroup && adduser --system --group appuser
@@ -29,7 +31,7 @@ RUN chown -R appuser:appgroup /app
 # Switch from root to the less-privileged user for running the application
 # All subsequent RUN, CMD, and ENTRYPOINT instructions will run as this user
 USER appuser
-
+```
 
 Running containers as non-root significantly improves security by limiting what an attacker could do if they compromised your application. It's similar to how modern operating systems discourage running applications with administrator privileges.
 
@@ -37,37 +39,52 @@ Running containers as non-root significantly improves security by limiting what 
 
 ONBUILD lets you create "template" images that automatically execute commands when used as a base image.
 
-
+```dockerfile
 # Define commands that will execute later when this image is used as a parent
 # These instructions are triggered when someone builds FROM this image
 ONBUILD COPY ./app /app/
 ONBUILD RUN pip install -r /app/requirements.txt
 ONBUILD EXPOSE 8000
-
+```
 
 ONBUILD is like leaving instructions for someone who will inherit your work. When another Dockerfile uses your image as a base, these commands automatically run during their build process. This is particularly useful for creating framework images where you want consistent setup steps across multiple child images.
 
 ## Managing Signals (STOPSIGNAL)
+
 STOPSIGNAL defines which system signal Docker sends to the container when it's being stopped.
+
+```dockerfile
 # Specify which signal Docker should use to gracefully stop the container
 # This overrides the default SIGTERM signal
 STOPSIGNAL SIGQUIT
+```
+
 This instruction helps containers shut down properly. Different applications respond better to different signals—some might need time to save data or close connections. It's like telling an application "please finish what you're doing" (SIGTERM) versus "save your work now" (SIGQUIT) rather than just pulling the power plug.
 
 ## Understanding SHELL Instructions for Different Shell Environments
+
 The SHELL instruction changes which shell is used for subsequent shell-form commands.
+
+```dockerfile
 # Set the default shell to PowerShell when running on Windows containers
 # This affects how shell-form commands are interpreted
 SHELL ["powershell", "-Command"]
+
 # After this, a command like:
 RUN echo $env:PATH
 # Would run in PowerShell instead of cmd.exe
+
 # You can also switch to bash with non-default options
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+```
+
 This is particularly important for cross-platform images or when you need specific shell features. It's like being able to choose between different interpreters for your build instructions, each with their own syntax and capabilities.
 
 ## Custom Entrypoints with Scripts
+
 Using a script as an ENTRYPOINT provides more flexibility for container startup logic.
+
+```dockerfile
 # Copy your entrypoint script into the image
 COPY docker-entrypoint.sh /usr/local/bin/
 # Make the script executable
@@ -76,6 +93,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 # Define default parameters to pass to the entrypoint
 CMD ["--default-parameter"]
+```
 
 An entrypoint script can handle initialization tasks like:
 - Waiting for dependent services to be ready
@@ -89,7 +107,7 @@ It's like having a smart startup manager that prepares everything before running
 
 Let's build a comprehensive Dockerfile that implements these advanced features:
 
-
+```dockerfile
 # Start with a specific Python version for reproducible builds
 FROM python:3.9-slim
 
@@ -107,6 +125,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Set working directory for the application
 WORKDIR /app
+
 # Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends tini curl && \
@@ -149,11 +168,11 @@ CMD ["python", "app.py"]
 # Instructions for anyone building FROM this image
 ONBUILD COPY custom/ /app/custom/
 ONBUILD RUN echo "Custom content detected, integrating..."
-
+```
 
 Corresponding entrypoint script (`docker-entrypoint.sh`):
 
-
+```bash
 #!/bin/bash
 set -e
 
@@ -181,7 +200,7 @@ fi
 
 # Pass control to the CMD
 exec "$@"
-
+```
 
 This Dockerfile combines all the advanced features we discussed:
 1. Uses LABEL for comprehensive metadata
@@ -195,7 +214,7 @@ This Dockerfile combines all the advanced features we discussed:
 
 Let's create a production-ready Django application Dockerfile with all these advanced features:
 
-
+```dockerfile
 # Use a specific Python version for stability
 FROM python:3.10-slim
 
@@ -234,8 +253,10 @@ RUN pip install --no-cache-dir -r requirements-prod.txt
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Copy application code
 COPY . .
+
 # Collect static files
 RUN python manage.py collectstatic --noinput
 
@@ -275,11 +296,11 @@ CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "djangocommerce.wsg
 ONBUILD COPY custom_apps/ /app/custom_apps/
 ONBUILD RUN echo "Detected custom applications, registering..." && \
            python manage.py register_custom_apps
-
+```
 
 Corresponding entrypoint script (`docker-entrypoint.sh`):
 
-
+```bash
 #!/bin/bash
 set -e
 
@@ -338,7 +359,7 @@ fi
 
 # Execute the provided command
 exec "$@"
-
+```
 
 This comprehensive example demonstrates:
 
@@ -356,29 +377,29 @@ This comprehensive example demonstrates:
 8. **Volume definition** for persistent data
 
 This setup follows Docker best practices and creates a production-ready container that's secure, maintainable, and properly documented.
-=====================================================================================
+
 # Dockerfile Security Best Practices
 
 ## Running Containers as Non-Root Users
 
 By default, Docker containers run processes as the root user, which creates significant security risks if the container is compromised. Moving to non-root users is essential for security.
 
-
+```bash
 # Docker CLI: Create and configure a non-root user
 docker run -u 1000:1000 nginx:alpine
+```
 
-
-
-# DockerFile Layer: Create a dedicated user and group for the application
+```dockerfile
+# Dockerfile Layer: Create a dedicated user and group for the application
 # These commands create a system user with no login shell
 RUN groupadd -r appuser && useradd -r -g appuser -s /bin/false appuser
 
-# DockerFile Layer: Set ownership of application files to this new user
+# Dockerfile Layer: Set ownership of application files to this new user
 RUN chown -R appuser:appuser /app /var/cache/nginx
 
-# DockerFile Layer: Switch to the non-root user for all subsequent operations
+# Dockerfile Layer: Switch to the non-root user for all subsequent operations
 USER appuser
-
+```
 
 Running as non-root is like keeping your house keys separate from your safe keys. If someone breaks into your container (gets the house keys), they still can't access your host system's sensitive areas (the safe). This limits what an attacker can do even if they exploit a vulnerability in your application.
 
@@ -388,21 +409,21 @@ Many official images now provide non-root alternatives, like `node:18-slim` vs. 
 
 Smaller images have fewer components that could contain vulnerabilities, making them more secure and faster to deploy.
 
-
+```bash
 # Docker CLI: Run a container with a minimal base image
 docker run alpine:3.16 ls -la
+```
 
-
-
-# DockerFile Layer: Instead of using a full OS image
+```dockerfile
+# Dockerfile Layer: Instead of using a full OS image
 # FROM ubuntu:22.04  # ~70MB+
 
-# DockerFile Layer: Use a minimal alternative
+# Dockerfile Layer: Use a minimal alternative
 FROM alpine:3.16  # ~5MB
 
-# DockerFile Layer: Or use a language-specific slim version
+# Dockerfile Layer: Or use a language-specific slim version
 FROM python:3.10-slim  # ~45MB vs ~900MB for regular
-
+```
 
 Think of image size reduction like packing only what you need for a trip rather than your entire wardrobe. Each additional component introduces potential vulnerabilities, so following the principle of least privilege means including only what your application absolutely requires.
 
@@ -411,67 +432,67 @@ When using minimal images, remember to:
 2. Combine related commands in a single RUN instruction to reduce layers
 3. Use multi-stage builds to separate build and runtime dependencies
 
-
+```bash
 # Docker CLI: Install packages and clean up in a single command
 docker run ubuntu:22.04 bash -c "apt-get update && apt-get install -y curl && apt-get clean && rm -rf /var/lib/apt/lists/*"
+```
 
-
-
-# DockerFile Layer: Clean up in the same RUN instruction where packages are installed
+```dockerfile
+# Dockerfile Layer: Clean up in the same RUN instruction where packages are installed
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-
+```
 
 ## Using Distroless & Scratch Images for Security
 
 Distroless images contain only your application and its runtime dependencies, without package managers, shells, or other unnecessary tools. This dramatically reduces the attack surface.
 
-
+```bash
 # Docker CLI: You cannot directly run a distroless image without an application
 # The following would not work because distroless has no shell
 # docker run gcr.io/distroless/static-debian11 ls
+```
 
-
-
-# DockerFile Layer: Multi-stage build example with distroless
+```dockerfile
+# Dockerfile Layer: Multi-stage build example with distroless
 FROM golang:1.19 AS builder
 WORKDIR /app
 COPY . .
 RUN CGO_ENABLED=0 go build -o myapp .
 
-# DockerFile Layer: Use a distroless image for the final stage
+# Dockerfile Layer: Use a distroless image for the final stage
 FROM gcr.io/distroless/static-debian11
 COPY --from=builder /app/myapp /
 USER nonroot:nonroot
 ENTRYPOINT ["/myapp"]
-
+```
 
 The `scratch` image is even more minimal—it's completely empty. You build on it by adding only the exact files needed by your application:
 
-
+```bash
 # Docker CLI: Cannot directly run scratch as it has no shell or executable
 # This is just for illustration
 # docker run scratch
+```
 
-
-
-# DockerFile Layer: First stage to build the application
+```dockerfile
+# Dockerfile Layer: First stage to build the application
 FROM golang:1.19 AS builder
 WORKDIR /app
 COPY . .
 # Build a statically linked binary with no dependencies
 RUN CGO_ENABLED=0 go build -a -ldflags='-extldflags=-static -w -s' -o myapp .
 
-# DockerFile Layer: Use a completely empty image
+# Dockerfile Layer: Use a completely empty image
 FROM scratch
 # Copy SSL certificates for HTTPS requests
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 # Copy the binary
 COPY --from=builder /app/myapp /myapp
 ENTRYPOINT ["/myapp"]
-
+```
 
 Using distroless or scratch is like removing all the doors and windows from your house except the main entrance. There are simply fewer ways for an attacker to get in. They can't find a shell to run commands, there are no package managers to install malicious software, and no utilities to leverage for movement within your container.
 
@@ -479,7 +500,7 @@ Using distroless or scratch is like removing all the doors and windows from your
 
 Container scanning tools identify known vulnerabilities in your images before deployment.
 
-
+```bash
 # Docker CLI: Scan an image for vulnerabilities using Trivy
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image nginx:latest
 
@@ -489,7 +510,7 @@ docker scout cves nginx:latest
 # Docker CLI: Generate a Software Bill of Materials (SBOM)
 # This requires BuildKit to be enabled
 docker buildx build --provenance=true --sbom=true -t myapp:latest .
-
+```
 
 Vulnerability scanning is like having a security expert inspect your house for weaknesses before you move in. These tools look for known issues in packages and libraries within your container and alert you to potential risks before they can be exploited.
 
@@ -499,20 +520,20 @@ Trivy, Docker Scout, and other scanning tools use vulnerability databases to ide
 
 Proper secret management prevents sensitive data from being baked into your images or exposed in your container environment.
 
-
+```bash
 # Docker CLI: Run a container with a secret mounted from a file
 docker run --secret source=db_password,target=/run/secrets/db_password myapp
 
 # Docker CLI: Build with a temporary secret (BuildKit must be enabled)
 docker buildx build --secret id=npm_token,src=/path/to/token.txt -t myapp .
+```
 
-
-
-# DockerFile Layer: AVOID this approach - secrets in build args become part of the image history
+```dockerfile
+# Dockerfile Layer: AVOID this approach - secrets in build args become part of the image history
 # ARG DB_PASSWORD=super_secret
 # ENV DATABASE_PASSWORD=$DB_PASSWORD
 
-# DockerFile Layer: INSTEAD, use BuildKit's secret mount during build time
+# Dockerfile Layer: INSTEAD, use BuildKit's secret mount during build time
 # This requires BuildKit to be enabled
 FROM node:18-slim
 WORKDIR /app
@@ -520,19 +541,19 @@ COPY . .
 RUN --mount=type=secret,id=npm_token \
     NPM_TOKEN=$(cat /run/secrets/npm_token) npm install
 
-# DockerFile Layer: For runtime secrets, mount them from the host or a secrets store
+# Dockerfile Layer: For runtime secrets, mount them from the host or a secrets store
 # docker run --secret source=db_password,target=/run/secrets/db_password myapp
-
+```
 
 At runtime, environment variables are visible to all processes in the container and may be logged accidentally:
 
-
+```bash
 # Docker CLI: AVOID passing secrets as environment variables
 # docker run -e DB_PASSWORD=super_secret myapp
 
 # Docker CLI: BETTER: Use a file mount for secrets at runtime
 # docker run -v /path/to/secrets:/run/secrets myapp
-
+```
 
 Handling secrets properly is like keeping your valuables in a safe rather than leaving them visible on a table. Secrets should:
 1. Never be committed to source control
@@ -546,14 +567,14 @@ Modern container orchestration platforms like Kubernetes and Docker Swarm provid
 
 Let's create a secure Nginx image that runs as a non-root user and then scan it for vulnerabilities:
 
-
+```bash
 # Docker CLI: Create a directory for our demo
 mkdir secure-nginx && cd secure-nginx
-
+```
 
 First, let's create our configuration files:
 
-
+```bash
 # Docker CLI: Create a custom nginx.conf that listens on port 8080 (non-privileged)
 cat > nginx.conf <<EOF
 worker_processes auto;
@@ -581,9 +602,9 @@ http {
     }
 }
 EOF
+```
 
-
-
+```bash
 # Docker CLI: Create a simple index.html
 cat > index.html <<EOF
 <!DOCTYPE html>
@@ -597,52 +618,52 @@ cat > index.html <<EOF
 </body>
 </html>
 EOF
-
+```
 
 Now, let's create our Dockerfile:
 
-
+```bash
 # Docker CLI: Create our Dockerfile
 cat > Dockerfile <<EOF
-# DockerFile Layer: Use multi-stage build for smaller final image
+# Dockerfile Layer: Use multi-stage build for smaller final image
 FROM nginx:1.23-alpine AS builder
 
-# DockerFile Layer: Create a custom nginx.conf that doesn't require root
+# Dockerfile Layer: Create a custom nginx.conf that doesn't require root
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY index.html /usr/share/nginx/html/
 
-# DockerFile Layer: Create a non-root user to own the files and run the process
+# Dockerfile Layer: Create a non-root user to own the files and run the process
 RUN chown -R nginx:nginx /usr/share/nginx/html /etc/nginx /var/log/nginx /var/cache/nginx /tmp
 
-# DockerFile Layer: Second stage: create minimal final image
+# Dockerfile Layer: Second stage: create minimal final image
 FROM nginx:1.23-alpine
 
-# DockerFile Layer: Copy configuration and content from builder
+# Dockerfile Layer: Copy configuration and content from builder
 COPY --from=builder /etc/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY --from=builder /usr/share/nginx/html/ /usr/share/nginx/html/
 
-# DockerFile Layer: Copy necessary directory permissions
+# Dockerfile Layer: Copy necessary directory permissions
 COPY --from=builder --chown=nginx:nginx /var/log/nginx /var/log/nginx
 COPY --from=builder --chown=nginx:nginx /var/cache/nginx /var/cache/nginx
 COPY --from=builder --chown=nginx:nginx /tmp /tmp
 
-# DockerFile Layer: Give nginx user write permissions to required directories
+# Dockerfile Layer: Give nginx user write permissions to required directories
 RUN chown -R nginx:nginx /usr/share/nginx/html /etc/nginx /var/log/nginx /var/cache/nginx /tmp
 
-# DockerFile Layer: Use the nginx user rather than root
+# Dockerfile Layer: Use the nginx user rather than root
 USER nginx
 
-# DockerFile Layer: Expose the non-privileged port
+# Dockerfile Layer: Expose the non-privileged port
 EXPOSE 8080
 
-# DockerFile Layer: Run with the global nginx.conf
+# Dockerfile Layer: Run with the global nginx.conf
 CMD ["nginx", "-g", "daemon off;"]
 EOF
-
+```
 
 Let's build, run, and test our secure Nginx container:
 
-
+```bash
 # Docker CLI: Build the image
 docker build -t secure-nginx:latest .
 
@@ -654,7 +675,7 @@ docker exec secure-nginx-test ps aux
 
 # Docker CLI: Scan the image for vulnerabilities using Trivy
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image secure-nginx:latest
-
+```
 
 This example demonstrates several security best practices:
 1. Running as a non-root user (nginx)
@@ -668,14 +689,14 @@ This example demonstrates several security best practices:
 
 Now let's create a more comprehensive example of a secure Node.js REST API using distroless containers and proper secret management:
 
-
+```bash
 # Docker CLI: Create project directory
 mkdir secure-api && cd secure-api
-
+```
 
 First, let's create our application files:
 
-
+```bash
 # Docker CLI: Create a simple Express API
 cat > server.js <<EOF
 const express = require('express');
@@ -726,9 +747,9 @@ app.listen(port, () => {
   console.log(\`Server running on port \${port}\`);
 });
 EOF
+```
 
-
-
+```bash
 # Docker CLI: Create package.json
 cat > package.json <<EOF
 {
@@ -744,9 +765,9 @@ cat > package.json <<EOF
   }
 }
 EOF
+```
 
-
-
+```bash
 # Docker CLI: Create a .dockerignore file
 cat > .dockerignore <<EOF
 node_modules
@@ -757,57 +778,54 @@ Dockerfile
 .gitignore
 README.md
 EOF
-
+```
 
 Now, let's create our Dockerfile:
 
-
+```bash
 # Docker CLI: Create our Dockerfile using multi-stage build and distroless
 cat > Dockerfile <<EOF
-# DockerFile Layer: Build stage
+# Dockerfile Layer: Build stage
 FROM node:18-slim AS build
 WORKDIR /app
 
-# DockerFile Layer: Copy package files and install dependencies
+# Dockerfile Layer: Copy package files and install dependencies
 COPY package*.json ./
 RUN npm ci --only=production
 
-# DockerFile Layer: Copy application code
+# Dockerfile Layer: Copy application code
 COPY . .
 
-# DockerFile Layer: Final stage using distroless
+# Dockerfile Layer: Final stage using distroless
 FROM gcr.io/distroless/nodejs18-debian11
 WORKDIR /app
 
-# DockerFile Layer: Copy node_modules and application code
+# Dockerfile Layer: Copy node_modules and application code
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/server.js ./server.js
 
-# DockerFile Layer: Create directory for secrets
-RUN ["/busybox/sh", "-c", "mkdir -p /run/secrets"]
-
-# DockerFile Layer: Use a non-root user
+# Dockerfile Layer: Use a non-root user
 USER nonroot:nonroot
 
-# DockerFile Layer: Set environment variables
+# Dockerfile Layer: Set environment variables
 ENV PORT=3000
 ENV NODE_ENV=production
 
-# DockerFile Layer: Define healthcheck
+# Dockerfile Layer: Define healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD ["node", "-e", "fetch('http://localhost:3000/health').then(r => r.status === 200 ? process.exit(0) : process.exit(1))"]
 
-# DockerFile Layer: Expose the application port
+# Dockerfile Layer: Expose the application port
 EXPOSE 3000
 
-# DockerFile Layer: Start the application
+# Dockerfile Layer: Start the application
 CMD ["server.js"]
 EOF
-
+```
 
 Let's create our test secrets and build, run, and test our secure API:
 
-
+```bash
 # Docker CLI: Create a secrets directory for local testing
 mkdir -p secrets
 echo "super_secure_password" > secrets/db_password
@@ -829,7 +847,7 @@ curl -H "X-API-Key: c67e7943-ea71-4c9e-a351-88e365b374f3" http://localhost:3000/
 
 # Docker CLI: Scan the image for vulnerabilities
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image secure-api:latest
-
+```
 
 This mini-project incorporates several advanced security practices:
 
@@ -852,19 +870,8 @@ This mini-project incorporates several advanced security practices:
    - Implements API key authentication for secured endpoints
    - Properly validates authentication before providing access to data
 
-6. **Health Monitoring**:
-   - Includes a health check endpoint for monitoring
-   - Configures Docker healthcheck for container orchestration
-
-7. **Additional Security Measures**:
-   - Configures NODE_ENV=production to disable development features
-   - Uses a .dockerignore file to prevent sensitive files from being included
-   - Implements proper error handling to avoid information disclosure
-
-This approach represents a comprehensive security posture for containerized applications, focusing on reducing attack surface, implementing least privilege, and properly managing sensitive information.
-
-For production deployment, you would typically integrate this with a secrets management service like HashiCorp Vault, AWS Secrets Manager, or Kubernetes Secrets rather than using local file mounts.
-=====================================================================# Advanced Docker Techniques: Multi-Stage Builds and Performance Optimization
+===
+# Advanced Docker Techniques: Multi-Stage Builds and Performance Optimization
 
 I'll explain each concept in detail and provide examples with Docker CLI commands as comments above each layer to show how these techniques work in practice.
 
@@ -872,7 +879,7 @@ I'll explain each concept in detail and provide examples with Docker CLI command
 
 Multi-stage builds allow you to use multiple `FROM` statements in your Dockerfile. Each `FROM` instruction starts a new build stage that can be selectively copied from. This approach helps create smaller, more efficient images by only including what's necessary in the final image.
 
-dockerfile
+```dockerfile
 # docker build -t myapp:optimized .
 FROM node:16 AS build
 WORKDIR /app
@@ -892,7 +899,7 @@ RUN npm install --only=production
 # docker layer: Copy only built artifacts from previous stage
 COPY --from=build /app/dist ./dist
 CMD ["node", "dist/index.js"]
-
+```
 
 This technique significantly reduces the final image size by:
 1. Excluding development dependencies
@@ -903,7 +910,7 @@ This technique significantly reduces the final image size by:
 
 Docker BuildKit provides advanced caching mechanisms to speed up builds by reusing cached layers.
 
-dockerfile
+```dockerfile
 # docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t myapp:cached .
 FROM python:3.9 AS builder
 
@@ -928,7 +935,7 @@ COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python
 COPY --from=builder /app .
 
 ENTRYPOINT ["python", "app.py"]
-
+```
 
 The key improvements here:
 - Using `--mount=type=cache` keeps the pip cache between builds
@@ -939,7 +946,7 @@ The key improvements here:
 
 External build contexts allow you to pull content from different locations during a build.
 
-dockerfile
+```dockerfile
 # docker build --build-arg VERSION=latest \
 #              --build-context configs=https://github.com/myorg/app-configs.git \
 #              -t myapp:with-configs .
@@ -957,7 +964,7 @@ COPY --from=configs /production/${VERSION}/ ./config/
 RUN npm install
 
 CMD ["npm", "start"]
-
+```
 
 This approach is valuable for:
 - Separating configuration from code
@@ -967,7 +974,7 @@ This approach is valuable for:
 
 ## Efficient Image Cleanup
 
-dockerfile
+```dockerfile
 # docker build --squash -t myapp:squashed .
 # Or with BuildKit:
 # DOCKER_BUILDKIT=1 docker build --output type=docker,name=myapp:optimized .
@@ -993,7 +1000,7 @@ RUN find /app -name "*.pyc" -delete && \
     rm -rf /app/tests /app/docs
     
 CMD ["python3", "app.py"]
-
+```
 
 Key techniques:
 - The `--squash` flag combines all layers into one, reducing duplication
@@ -1003,7 +1010,7 @@ Key techniques:
 
 ## Benchmarking Image Size and Build Time
 
-dockerfile
+```dockerfile
 # Benchmark commands:
 # time docker build -t myapp:baseline .
 # docker images myapp:baseline --format "{{.Size}}"
@@ -1031,7 +1038,7 @@ COPY app/ app/
 # docker layer: Clean up unnecessary files
 RUN find . -type d -name __pycache__ -exec rm -rf {} +
 CMD ["python", "app/main.py"]
-
+```
 
 Best practices for benchmarking:
 - Time your builds regularly to spot regressions
@@ -1043,8 +1050,10 @@ Best practices for benchmarking:
 ## Hands-on Demo and Mini Project Ideas
 
 For the hands-on demo (microservices app) and mini project (Python web app optimization), I'll provide examples of the Dockerfiles you might create:
-Optimized Multi-Stage Build for Microservices App
-dockerfile
+
+### Optimized Multi-Stage Build for Microservices App
+
+```dockerfile
 # docker build -t microservice:optimized --build-arg SERVICE=auth .
 # Base development image with all build dependencies
 FROM node:16 AS base
@@ -1080,10 +1089,11 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
 # Run with a non-root user for security
 USER node
 CMD ["node", "dist/index.js"]
+```
 
+### Python Web App with BuildKit Caching
 
-Python Web App with BuildKit Caching
-dockerfile
+```dockerfile
 # DOCKER_BUILDKIT=1 docker build -t webapp:optimized .
 # Base development image
 FROM python:3.9-slim AS base
@@ -1145,8 +1155,7 @@ EXPOSE 8000
 
 # Set entrypoint
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app.wsgi:application"]
-
-
+```
 
 ## Key Takeaways
 
@@ -1165,7 +1174,9 @@ CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app.wsgi:application"]
 7. **Microservice Optimization**: For microservices, parameterize builds with ARGs to reuse the same Dockerfile for different services.
 
 These techniques will significantly improve your Docker workflow by creating smaller, more secure images that build faster and run more efficiently.
-======================================================================
+
+---
+
 # Debugging & Troubleshooting Dockerfile Issues and Capstone Project Guide
 
 I'll provide a comprehensive explanation of Docker debugging techniques and address the capstone project requirements. Let's explore each concept with practical examples and approaches.
@@ -1174,7 +1185,7 @@ I'll provide a comprehensive explanation of Docker debugging techniques and addr
 
 When Docker builds fail, it can be challenging to pinpoint the exact issue without proper visibility into the build process.
 
-dockerfile
+```dockerfile
 # docker build --progress=plain -t myapp .
 FROM node:16
 
@@ -1193,7 +1204,7 @@ COPY . .
 RUN npm run build
 
 CMD ["npm", "start"]
-
+```
 
 The `--progress=plain` flag provides detailed output of each build step, showing:
 - Exact commands being executed
@@ -1210,7 +1221,7 @@ This verbose output helps identify issues like:
 
 Once containers are running, logs become your primary debugging tool.
 
-
+```bash
 # Basic log viewing
 docker logs container_name
 
@@ -1225,24 +1236,24 @@ docker logs --tail 100 container_name
 
 # Filter logs with grep
 docker logs container_name | grep ERROR
-
+```
 
 Implementing proper logging in your application is crucial:
 
-dockerfile
+```dockerfile
 # docker layer: Configure logging
 ENV NODE_ENV=production
 ENV LOG_LEVEL=info
 
 # Use environment variables to control logging
 CMD ["node", "--require=./logging-setup.js", "server.js"]
-
+```
 
 ## Running Interactive Debugging with Docker Exec
 
 When logs aren't enough, you can connect directly to running containers:
 
-
+```bash
 # Open an interactive shell
 docker exec -it container_name bash
 
@@ -1254,7 +1265,7 @@ docker exec -u root container_name apt-get update
 
 # Execute in a specific directory
 docker exec -w /app container_name npm list
-
+```
 
 This approach allows you to:
 - Inspect file contents and permissions
@@ -1266,7 +1277,7 @@ This approach allows you to:
 
 Understanding how your image is constructed is vital for optimization and debugging:
 
-
+```bash
 # View layer history
 docker history myapp:latest
 
@@ -1275,7 +1286,7 @@ docker inspect myapp:latest
 
 # Use BuildKit's inspect feature (more detailed)
 docker buildx imagetools inspect myapp:latest
-
+```
 
 This information reveals:
 - Layer sizes and creation times
@@ -1287,7 +1298,7 @@ This information reveals:
 
 ### Permission Denied Issues
 
-dockerfile
+```dockerfile
 # docker layer: Create directories with proper permissions
 RUN mkdir -p /app/data && \
     chown -R node:node /app
@@ -1298,21 +1309,22 @@ USER node
 # For persistent volumes, set permissions on container start
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["node", "server.js"]
-
+```
 
 In your entrypoint script:
 
+```bash
 #!/bin/bash
 # Fix permissions if running as root
 if [ "$(id -u)" = "0" ]; then
    chown -R node:node /app/data
 fi
 exec "$@"
-
+```
 
 ### Package Conflicts
 
-dockerfile
+```dockerfile
 # docker layer: Use lockfiles for deterministic installs
 COPY package.json package-lock.json ./
 RUN npm ci --production
@@ -1322,11 +1334,11 @@ RUN python -m venv /app/venv
 ENV PATH="/app/venv/bin:$PATH"
 COPY requirements.txt .
 RUN pip install -r requirements.txt
-
+```
 
 ### Path and Environment Issues
 
-dockerfile
+```dockerfile
 # docker layer: Set clear environment variables
 ENV NODE_ENV=production \
     PATH="/app/node_modules/.bin:$PATH" \
@@ -1337,16 +1349,16 @@ RUN echo "Node version: $(node -v)" && \
     echo "NPM version: $(npm -v)" && \
     echo "Current directory: $(pwd)" && \
     echo "PATH: $PATH"
-
+```
 
 ## Using BuildKit's Debug Mode
 
 BuildKit provides advanced debugging capabilities:
 
-
+```bash
 # Enable BuildKit and debug mode
 BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build --no-cache --progress=plain --debug .
-
+```
 
 This approach:
 - Shows detailed execution traces
@@ -1358,7 +1370,7 @@ This approach:
 
 Performance issues can be identified with Docker's monitoring tools:
 
-
+```bash
 # Basic resource usage
 docker stats container_name
 
@@ -1367,16 +1379,17 @@ docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"
 
 # Continuous monitoring with periodic snapshots
 watch -n 5 "docker stats --no-stream"
-
+```
 
 This helps identify:
 - Memory leaks
 - CPU bottlenecks
 - I/O-related performance issues
 - Resource contention between containers
------------------
-Troubleshooting a Broken React App Dockerfile
-dockerfile
+
+## Troubleshooting a Broken React App Dockerfile
+
+```dockerfile
 # Original problematic Dockerfile
 FROM node:16
 
@@ -1447,10 +1460,11 @@ EXPOSE 80
 
 # docker layer: Start nginx with debugging enabled
 CMD ["nginx", "-g", "daemon off; error_log /dev/stdout debug;"]
+```
 
+## Debuggable Streaming Service Container
 
-Debuggable Streaming Service Container
-dockerfile
+```dockerfile
 # Base image with debugging tools
 FROM node:16-alpine AS base
 
@@ -1504,10 +1518,11 @@ VOLUME ["/app/logs"]
 
 # Start application with debugging enabled
 CMD ["node", "--inspect=0.0.0.0:9229", "--require", "./config/logging.js", "server.js"]
+```
 
+## Capstone Project: Production-Ready Multi-Container Application
 
-Capstone Project: Production-Ready Multi-Container 
-dockerfile
+```dockerfile
 ###################
 # FRONTEND SERVICE
 ###################
@@ -1604,8 +1619,7 @@ CMD ["node", "dist/server.js"]
 FROM postgres:13-alpine AS database
 
 # docker layer: Add security hardening
-RUN chmod 0700 /var/lib/postgresql/data && \
-    sed -i 's/max_connections = 100/max_connections = 200/' /usr/local/share/postgresql/postgresql.conf.sample
+RUN chmod 0700 /var/lib/postgresql/data
 
 # docker layer: Add custom init scripts
 COPY db/init-scripts/ /docker-entrypoint-initdb.d/
@@ -1629,10 +1643,7 @@ FROM redis:6-alpine AS cache
 COPY redis/redis.conf /usr/local/etc/redis/redis.conf
 
 # docker layer: Add security hardening
-RUN chmod 0777 /usr/local/etc/redis && \
-    chmod 0777 /usr/local/etc/redis/redis.conf && \
-    # Remove default password
-    sed -i 's/# requirepass foobared/requirepass ${REDIS_PASSWORD}/' /usr/local/etc/redis/redis.conf
+RUN chmod 0644 /usr/local/etc/redis/redis.conf
 
 # docker layer: Add healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
@@ -1641,8 +1652,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
 EXPOSE 6379
 
 CMD ["redis-server", "/usr/local/etc/redis/redis.conf"]
-
-
+```
 
 ## Capstone Project: Building a Production-Ready Application
 
