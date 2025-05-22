@@ -159,8 +159,9 @@ Here's the organized project structure:
 ├── requirements.txt
 ├── app.py
 └── README.md
+------------------------------
 Dockerfile
-dockerfile
+------------------------------
 # Use slim Python 3.9 as base image for smaller footprint
 FROM python:3.9-slim
 
@@ -201,6 +202,7 @@ HEALTHCHECK --interval=30s --timeout=3s \
 
 # Run the application
 CMD ["python", "app.py"]
+------------------------------
 .env
 plaintext
 # Environment variables
@@ -211,6 +213,7 @@ requirements.txt
 plaintext
 # Application dependencies
 gunicorn==20.1.0
+------------------------------
 app.py
 python
 import http.server
@@ -233,10 +236,16 @@ with socketserver.ThreadingTCPServer(("", PORT), Handler) as httpd:
     httpd.server_name = "SecurePythonServer"
     httpd.max_children = MAX_CONNECTIONS
     httpd.serve_forever()
+------------------------------
 README.md
 markdown
 # Secure and Optimized Web Server
-
+------------------------------
+requirements.txt
+# Application dependencies
+gunicorn==20.1.0
+# No external dependencies needed for built-in Python server
+-------------------------------
 ## Prerequisites
 - Docker
 - Docker Compose (optional)
