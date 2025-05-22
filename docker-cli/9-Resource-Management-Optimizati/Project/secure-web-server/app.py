@@ -1,20 +1,20 @@
-import http.server
-import socketserver
 import os
+from wsgiref.simple_server import make_server
 
 PORT = int(os.getenv("PORT", 8000))
-MAX_CONNECTIONS = int(os.getenv("MAX_CONNECTIONS", 100))
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
-class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+def application(environ, start_response):
+    """Simple WSGI application"""
+    status = '200 OK'
+    headers = [('Content-type', 'text/plain; charset=utf-8')]
+    start_response(status, headers)
+    return [b'Secure Python Server Running!\n']
 
-Handler = CustomHTTPRequestHandler
-socketserver.TCPServer.allow_reuse_address = True
+if __name__ == '__main__':
+    # For development - use built-in server
+    with make_server('', PORT, application) as httpd:
+        print(f"Serving at port {PORT}")
+        httpd.serve_forever()
 
-with socketserver.ThreadingTCPServer(("", PORT), Handler) as httpd:
-    print(f"Serving at port {PORT}")
-    httpd.socket.setsockopt(socketserver.socket.SOL_SOCKET, socketserver.socket.SO_REUSEADDR, 1)
-    httpd.server_name = "SecurePythonServer"
-    httpd.max_children = MAX_CONNECTIONS
-    httpd.serve_forever()
+# For production - gunicorn will use the 'application' function
