@@ -14,14 +14,16 @@ Key benefits of Docker Compose include:
 - Creating isolated environments for different projects
 - Simplifying complex container configurations
 
-## Installing Docker Compose
+# Docker Compose Guide
 
-```yaml
-# docker compose --version
+## Installing Docker Compose
+```bash
+# Check if Docker Compose is installed
+docker compose --version
+
 # On newer Docker installations, Compose comes pre-installed as a Docker plugin
-# For older versions: sudo apt-get install docker-compose (Ubuntu/Debian)
+# For older versions: sudo apt-get install docker-compose-plugin (Ubuntu/Debian)
 # or: sudo yum install docker-compose-plugin (RHEL/CentOS)
-version: '3.8'
 ```
 
 Docker Compose usually comes pre-installed with Docker Desktop for Windows and Mac. For Linux, it can be installed separately. Recent Docker versions include Compose V2 as a Docker plugin, so you can use it with `docker compose` instead of the standalone `docker-compose` command.
@@ -31,18 +33,18 @@ Docker Compose usually comes pre-installed with Docker Desktop for Windows and M
 The `docker-compose.yml` file is the heart of Docker Compose, where you define all your services:
 
 ```yaml
-# docker compose config (to validate your docker-compose.yml)
+# Use 'docker compose config' to validate your docker-compose.yml
 version: '3.8'
 
 services:
   # First service definition
   webapp:
-    # docker layer: Specify the image to use
+    # Specify the image to use
     image: nginx:latest
-    # docker layer: Map ports between host and container
+    # Map ports between host and container
     ports:
       - "8080:80"
-    # docker layer: Mount volumes for persistent data
+    # Mount volumes for persistent data
     volumes:
       - ./html:/usr/share/nginx/html
 ```
@@ -52,34 +54,34 @@ The file starts with a `version` defining which Compose file format you're using
 ## Running Multiple Containers
 
 ```yaml
-# docker compose up -d (start containers in detached mode)
+# Use 'docker compose up -d' to start containers in detached mode
 version: '3.8'
 
 services:
   # Web server service
   web:
-    # docker layer: Build from local Dockerfile
+    # Build from local Dockerfile
     build: ./web
-    # docker layer: Map container port 5000 to host port 8000
+    # Map container port 5000 to host port 8000
     ports:
       - "8000:5000"
-    # docker layer: Set environment variables
+    # Set environment variables
     environment:
       - DATABASE_URL=postgres://postgres:password@db:5432/app
-    # docker layer: Define dependency (web starts after db)
+    # Define dependency (web starts after db)
     depends_on:
       - db
 
   # Database service
   db:
-    # docker layer: Use PostgreSQL image
+    # Use PostgreSQL image
     image: postgres:13
-    # docker layer: Set environment variables
+    # Set environment variables
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=app
-    # docker layer: Create a named volume for data persistence
+    # Create a named volume for data persistence
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -92,48 +94,81 @@ With this configuration, you can start both containers with a single command: `d
 
 ## Stopping and Cleaning Up
 
-```yaml
-# docker compose down (stop and remove containers)
-# docker compose down -v (also remove volumes)
-# docker compose down --rmi all (also remove images)
-version: '3.8'
+```bash
+# Stop and remove containers
+docker compose down
 
-services:
-  web:
-    # Configuration as above
+# Also remove volumes
+docker compose down -v
+
+# Also remove images
+docker compose down --rmi all
 ```
 
 To stop all services and remove containers, networks, and (optionally) volumes, you use the `docker compose down` command. This provides a clean way to reset your environment.
----------------------------------
-Flask + PostgreSQL Docker Compose Demo
+
+## Additional Useful Commands
+
+```bash
+# View running services
+docker compose ps
+
+# View logs
+docker compose logs
+
+# Follow logs in real-time
+docker compose logs -f
+
+# Restart services
+docker compose restart
+
+# Scale a service
+docker compose up --scale web=3
+
+# Execute commands in running containers
+docker compose exec web bash
+
+---------------------------------====================================
+# Docker Compose Application Demos
+
+## Flask + PostgreSQL Docker Compose Demo
+
+```bash
+# Start entire stack
+docker compose up -d
+
+# Follow logs from all services
+docker compose logs -f
+
+# Run migrations
+docker compose exec web flask db upgrade
+```
+
 ```yaml
-# docker compose up -d (start entire stack)
-# docker compose logs -f (follow logs from all services)
-# docker compose exec web flask db upgrade (run migrations)
 version: '3.8'
 
 services:
   # Flask Web Application
   web:
-    # docker layer: Build the container using the Dockerfile in ./web directory
+    # Build the container using the Dockerfile in ./web directory
     build: ./web
-    # docker layer: Map host port 5000 to container port 5000
+    # Map host port 5000 to container port 5000
     ports:
       - "5000:5000"
-    # docker layer: Mount application code as volume for development
+    # Mount application code as volume for development
     volumes:
       - ./web:/app
-    # docker layer: Set environment variables
+    # Set environment variables
     environment:
       - FLASK_APP=app.py
       - FLASK_DEBUG=1
       - DATABASE_URL=postgresql://postgres:password@db:5432/flask_db
-    # docker layer: Wait for db to be ready before starting
+    # Wait for db to be ready before starting
     depends_on:
       - db
-    # docker layer: Restart policy in case of crashes
+    # Restart policy in case of crashes
     restart: unless-stopped
-    # docker layer: Define custom healthcheck
+    # Define custom healthcheck
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
@@ -143,22 +178,22 @@ services:
 
   # PostgreSQL Database
   db:
-    # docker layer: Use official PostgreSQL image
+    # Use official PostgreSQL image
     image: postgres:13-alpine
-    # docker layer: Expose port for external tools (e.g., pgAdmin)
+    # Expose port for external tools (e.g., pgAdmin)
     ports:
       - "5432:5432"
-    # docker layer: Set environment variables
+    # Set environment variables
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=flask_db
-    # docker layer: Store database data in named volume
+    # Store database data in named volume
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # docker layer: Mount initialization scripts
+      # Mount initialization scripts
       - ./db/init:/docker-entrypoint-initdb.d
-    # docker layer: Define healthcheck
+    # Define healthcheck
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -167,26 +202,27 @@ services:
 
   # pgAdmin for database management (optional)
   pgadmin:
-    # docker layer: Use pgAdmin 4 image
+    # Use pgAdmin 4 image
     image: dpage/pgadmin4
-    # docker layer: Map container port 80 to host port 8080
+    # Map container port 80 to host port 8080
     ports:
       - "8080:80"
-    # docker layer: Set environment variables
+    # Set environment variables
     environment:
       - PGADMIN_DEFAULT_EMAIL=admin@example.com
       - PGADMIN_DEFAULT_PASSWORD=admin
-    # docker layer: Depend on database service
+    # Depend on database service
     depends_on:
       - db
-    # docker layer: Restart policy
+    # Restart policy
     restart: unless-stopped
 
 # Define named volumes for data persistence
 volumes:
   postgres_data:
-
 ```
+
+### Flask + PostgreSQL Demo Explanation
 
 In this Flask + PostgreSQL example:
 
@@ -211,42 +247,53 @@ In this Flask + PostgreSQL example:
 
 5. A named volume ensures database data persists between container restarts.
 
-WordPress + MySQL Docker Compose Mini Project
+## WordPress + MySQL Docker Compose Demo
+
+```bash
+# Start WordPress and MySQL
+docker compose up -d
+
+# Check container status
+docker compose ps
+
+# View WordPress logs
+docker compose logs wordpress
+
+# Install a plugin
+docker compose exec wordpress wp plugin install woocommerce --activate
+```
+
 ```yaml
-# docker compose up -d (start WordPress and MySQL)
-# docker compose ps (check container status)
-# docker compose logs wordpress (view WordPress logs)
-# docker compose exec wordpress wp plugin install woocommerce --activate (install a plugin)
 version: '3.8'
 
 services:
   # WordPress Application
   wordpress:
-    # docker layer: Use official WordPress image
+    # Use official WordPress image
     image: wordpress:latest
-    # docker layer: Map host port 8000 to container port 80
+    # Map host port 8000 to container port 80
     ports:
       - "8000:80"
-    # docker layer: Set required environment variables
+    # Set required environment variables
     environment:
       - WORDPRESS_DB_HOST=db
       - WORDPRESS_DB_USER=wordpress
       - WORDPRESS_DB_PASSWORD=wordpress_password
       - WORDPRESS_DB_NAME=wordpress
-      # docker layer: Additional WP configuration
+      # Additional WP configuration
       - WORDPRESS_DEBUG=1
       - WORDPRESS_CONFIG_EXTRA=define('WP_MEMORY_LIMIT', '256M');
-    # docker layer: Mount custom themes and plugins
+    # Mount custom themes and plugins
     volumes:
       - wordpress_data:/var/www/html
       - ./custom-themes:/var/www/html/wp-content/themes/custom
       - ./custom-plugins:/var/www/html/wp-content/plugins/custom
-    # docker layer: Wait for database to be ready
+    # Wait for database to be ready
     depends_on:
       - db
-    # docker layer: Restart policy
+    # Restart policy
     restart: unless-stopped
-    # docker layer: Define healthcheck
+    # Define healthcheck
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/wp-admin/install.php"]
       interval: 30s
@@ -256,48 +303,48 @@ services:
 
   # MySQL Database
   db:
-    # docker layer: Use MySQL image
+    # Use MySQL image
     image: mysql:8.0
-    # docker layer: Set memory limits
+    # Set memory limits
     deploy:
       resources:
         limits:
           memory: 1G
-    # docker layer: Set environment variables
+    # Set environment variables
     environment:
       - MYSQL_DATABASE=wordpress
       - MYSQL_USER=wordpress
       - MYSQL_PASSWORD=wordpress_password
       - MYSQL_ROOT_PASSWORD=root_password
-    # docker layer: Store database files in named volume
+    # Store database files in named volume
     volumes:
       - mysql_data:/var/lib/mysql
       - ./mysql-init:/docker-entrypoint-initdb.d
-    # docker layer: Define healthcheck
+    # Define healthcheck
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "wordpress", "-pwordpress_password"]
       interval: 10s
       timeout: 5s
       retries: 5
-    # docker layer: Restart policy
+    # Restart policy
     restart: unless-stopped
 
   # phpMyAdmin for database management (optional)
   phpmyadmin:
-    # docker layer: Use phpMyAdmin image
+    # Use phpMyAdmin image
     image: phpmyadmin/phpmyadmin
-    # docker layer: Map container port 80 to host port 8080
+    # Map container port 80 to host port 8080
     ports:
       - "8080:80"
-    # docker layer: Set environment variables
+    # Set environment variables
     environment:
       - PMA_HOST=db
       - PMA_USER=root
       - PMA_PASSWORD=root_password
-    # docker layer: Depend on database service
+    # Depend on database service
     depends_on:
       - db
-    # docker layer: Restart policy
+    # Restart policy
     restart: unless-stopped
 
 # Define networks (optional but good practice)
@@ -309,8 +356,9 @@ networks:
 volumes:
   wordpress_data:
   mysql_data:
-
 ```
+
+### WordPress + MySQL Demo Explanation
 
 In this WordPress + MySQL example:
 
@@ -369,6 +417,7 @@ While these examples cover the basics, Docker Compose offers advanced features l
 
 Docker Compose has revolutionized local development environments by making it simple to set up complex, multi-container applications with a single command. It bridges the gap between development and production, ensuring consistent environments throughout the application lifecycle.
 
+
 =====================================================================
 # Docker Compose: Defining and Connecting Services
 
@@ -380,18 +429,24 @@ At its core, Docker Compose is built around three key concepts that form the fou
 
 ### Services
 
-Services represent your application's containers. Each service is defined separately in your `docker-compose.yml` file and can be built from a Dockerfile or pulled from a registry. 
+Services represent your application's containers. Each service is defined separately in your `docker-compose.yml` file and can be built from a Dockerfile or pulled from a registry.
+
+```bash
+# List running services
+docker compose ps
+
+# Show running processes
+docker compose top
+```
 
 ```yaml
-# docker compose ps (list running services)
-# docker compose top (show running processes)
 services:
   webapp:
-    # docker layer: Define which image to use
+    # Define which image to use
     image: nginx:alpine
-    # docker layer: Set container name (optional)
+    # Set container name (optional)
     container_name: my-webapp
-    # docker layer: Map ports from host to container
+    # Map ports from host to container
     ports:
       - "8080:80"
 ```
@@ -402,23 +457,29 @@ Services encapsulate everything about a container: its image, environment variab
 
 Networks enable communication between your containers. Docker Compose automatically creates a default bridge network for your application, but you can define custom networks for better isolation and security.
 
+```bash
+# List networks
+docker network ls
+
+# Inspect the default network
+docker network inspect compose_default
+```
+
 ```yaml
-# docker network ls (list networks)
-# docker network inspect compose_default
 services:
   webapp:
     # ...other configuration
-    # docker layer: Connect to specific networks
+    # Connect to specific networks
     networks:
       - frontend
       - backend
 
 networks:
-  # docker layer: Define custom frontend network
+  # Define custom frontend network
   frontend:
-    # docker layer: Use specific driver (bridge is default)
+    # Use specific driver (bridge is default)
     driver: bridge
-  # docker layer: Define custom backend network
+  # Define custom backend network
   backend:
     driver: bridge
 ```
@@ -429,21 +490,27 @@ The power of custom networks is that they provide isolation between different pa
 
 Volumes are Docker's mechanism for persistent data storage. They allow data to survive container restarts and can be shared between containers.
 
+```bash
+# List volumes
+docker volume ls
+
+# Inspect a specific volume
+docker volume inspect compose_db_data
+```
+
 ```yaml
-# docker volume ls (list volumes)
-# docker volume inspect compose_db_data
 services:
   database:
     image: postgres:13
-    # docker layer: Mount volumes for data persistence
+    # Mount volumes for data persistence
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
 
 volumes:
-  # docker layer: Define named volume
+  # Define named volume
   db_data:
-    # docker layer: Use specific driver (local is default)
+    # Use specific driver (local is default)
     driver: local
 ```
 
@@ -453,31 +520,35 @@ Volumes ensure that your data doesn't disappear when containers are stopped, and
 
 One of the most powerful features of Docker Compose is how easily it lets containers connect to one another. Containers in the same Compose file can reference each other by service name:
 
+```bash
+# Follow logs from api service
+docker compose logs -f api
+```
+
 ```yaml
-# docker compose logs -f api (follow logs from api service)
 services:
   # Frontend service
   frontend:
     build: ./frontend
     ports:
       - "3000:3000"
-    # docker layer: Reference API service by name in environment variables
+    # Reference API service by name in environment variables
     environment:
       - API_URL=http://api:4000
-    # docker layer: Connect only to frontend network
+    # Connect only to frontend network
     networks:
       - frontend
 
   # API service
   api:
     build: ./api
-    # docker layer: No need to expose ports to host if only internal communication
+    # No need to expose ports to host if only internal communication
     expose:
       - "4000"
-    # docker layer: Reference database by service name
+    # Reference database by service name
     environment:
       - DATABASE_URL=mongodb://database:27017/myapp
-    # docker layer: Connect to both networks
+    # Connect to both networks
     networks:
       - frontend
       - backend
@@ -485,7 +556,7 @@ services:
   # Database service
   database:
     image: mongo:5
-    # docker layer: Connect only to backend network
+    # Connect only to backend network
     networks:
       - backend
 
@@ -503,13 +574,19 @@ What's happening here is quite powerful—Docker's DNS resolver automatically re
 
 Container startup order matters. The `depends_on` option allows you to express this dependency:
 
+```bash
+# Create containers without starting them
+docker compose up --no-start
+
+# Start services in dependency order
+docker compose start
+```
+
 ```yaml
-# docker compose up --no-start (create containers without starting them)
-# docker compose start (start services in dependency order)
 services:
   api:
     build: ./api
-    # docker layer: Define dependencies for startup order
+    # Define dependencies for startup order
     depends_on:
       - database
       - redis
@@ -527,25 +604,29 @@ It's important to understand that `depends_on` only waits for containers to star
 
 Environment variables are crucial for configuration. Docker Compose offers several ways to manage them:
 
+```bash
+# View resolved configuration with variables
+docker compose config
+```
+
 ```yaml
-# docker compose config (view resolved configuration with variables)
 services:
   webapp:
     image: myapp:latest
-    # docker layer: Inline environment variables
+    # Inline environment variables
     environment:
       - NODE_ENV=production
       - API_KEY=secret_key
       
   api:
     image: myapi:latest
-    # docker layer: Environment variables from file
+    # Environment variables from file
     env_file:
       - ./config/api.env
       
   database:
     image: postgres:13
-    # docker layer: Mix of inline and variable substitution
+    # Mix of inline and variable substitution
     environment:
       - POSTGRES_USER=${DB_USER:-postgres}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
@@ -559,8 +640,12 @@ For sensitive data, using a combination of `.env` files (which you would not com
 
 Docker Compose has evolved over time, with different versions supporting different features:
 
+```bash
+# Check installed version
+docker compose version
+```
+
 ```yaml
-# docker compose version (check installed version)
 # Compose file format version - determines available features
 version: '3.8'
 
@@ -572,10 +657,267 @@ services:
 The latest versions (3.x) are compatible with both Docker Compose and Docker Swarm, while newer features appear in minor version increments (3.8, 3.9, etc.). Specifying the version ensures your Compose file uses the right set of features for your environment.
 
 As Docker Compose evolves, newer versions offer more capabilities, such as improved health checks, rollback controls, and deployment configuration.
-----------------------------------------
-React Frontend + Node.js API + MongoDB using Docker
 
-```yaml
+## Additional Useful Commands
+
+```bash
+# Build all services
+docker compose build
+
+# Pull latest images for all services
+docker compose pull
+
+# Stop all services
+docker compose stop
+
+# Remove stopped containers
+docker compose rm
+
+# View service configuration
+docker compose config --services
+
+# Scale a service
+docker compose up --scale webapp=3
+
+# Execute commands in running containers
+docker compose exec webapp bash
+
+# View resource usage
+docker compose top
+```
+
+=========================================================
+# MERN Stack Docker Compose Project Guide
+
+## Project Overview
+
+This project uses Docker Compose to orchestrate a complete MERN (MongoDB, Express, React, Node.js) stack application with the following services:
+
+- **Frontend**: React development server with hot-reloading
+- **API**: Node.js/Express backend server
+- **MongoDB**: Database server with persistence
+- **Mongo Express**: Web-based MongoDB administration interface
+
+## Project Structure
+
+```
+project-root/
+├── docker-compose.yml
+├── frontend/
+│   ├── Dockerfile.dev
+│   └── [React app files]
+├── backend/
+│   ├── Dockerfile.dev
+│   └── [Node.js app files]
+└── mongo-init/
+    └── [MongoDB initialization scripts]
+```
+
+## Docker Compose Commands Explained
+
+### 1. `docker compose up -d`
+**Purpose**: Start all services in detached mode
+
+**What it does**:
+- Builds Docker images for frontend and API services (if not already built)
+- Creates and starts all containers defined in docker-compose.yml
+- Sets up networking between services
+- Creates named volumes for data persistence
+- Runs containers in the background (`-d` flag = detached mode)
+
+**Expected outcome**: All services running and accessible via their mapped ports
+
+### 2. `docker compose logs -f`
+**Purpose**: Follow logs from all running services
+
+**What it does**:
+- Displays real-time logs from all containers
+- Shows color-coded output for each service
+- Continues to stream new log entries (`-f` flag = follow)
+- Useful for debugging and monitoring application behavior
+
+**Use cases**:
+- Monitor application startup
+- Debug errors across services
+- Watch API requests and database operations
+
+### 3. `docker compose exec api npm run seed`
+**Purpose**: Run database seeding script inside the API container
+
+**What it does**:
+- Executes a command inside the running `api` container
+- Runs the npm script defined as `seed` in package.json
+- Typically populates the database with initial/sample data
+- Must be run after services are up and healthy
+
+**Prerequisites**: 
+- API container must be running
+- MongoDB must be accessible
+- Seed script must be defined in backend/package.json
+
+## Step-by-Step Project Setup
+
+### Prerequisites
+- Docker and Docker Compose installed
+- Project files structured as shown above
+- Dockerfiles created for frontend and backend services
+
+### Step 1: Initial Setup
+```bash
+# Navigate to project directory
+cd your-mern-project
+
+# Verify docker-compose.yml exists
+ls docker-compose.yml
+```
+
+### Step 2: Start All Services
+```bash
+# Start all services in detached mode
+docker compose up -d
+
+# Expected output:
+# ✓ Container mongo created
+# ✓ Container api created  
+# ✓ Container frontend created
+# ✓ Container mongo-express created
+```
+
+### Step 3: Monitor Service Health
+```bash
+# Check if all services are running
+docker compose ps
+
+# Follow logs to ensure services start correctly
+docker compose logs -f
+
+# Watch for:
+# - MongoDB connection successful
+# - API server listening on port 4000
+# - React dev server ready on port 3000
+```
+
+### Step 4: Seed Database (Optional)
+```bash
+# Wait for services to be healthy, then seed database
+docker compose exec api npm run seed
+
+# Expected output:
+# Database seeded successfully
+# Sample data inserted
+```
+
+### Step 5: Access Your Application
+- **Frontend**: http://localhost:3000
+- **API**: http://localhost:4000
+- **MongoDB Admin**: http://localhost:8081 (admin/admin123)
+- **Direct MongoDB**: localhost:27017
+
+## Service Architecture Breakdown
+
+### Frontend Service
+- **Port**: 3000 (host) → 3000 (container)
+- **Features**: Hot-reloading, development optimized
+- **Environment**: Points to API at localhost:4000
+- **Dependencies**: Requires API service to be running
+
+### API Service  
+- **Port**: 4000 (host) → 4000 (container)
+- **Features**: Development mode with auto-restart
+- **Database**: Connects to MongoDB at mongo:27017
+- **Health Check**: Monitors /api/health endpoint
+- **Dependencies**: Requires healthy MongoDB connection
+
+### MongoDB Service
+- **Port**: 27017 (host) → 27017 (container)
+- **Persistence**: Data stored in `mongo_data` volume
+- **Initialization**: Runs scripts from ./mongo-init/
+- **Health Check**: Validates database connectivity
+
+### Mongo Express Service
+- **Port**: 8081 (host) → 8081 (container)
+- **Purpose**: Web-based database administration
+- **Access**: Username: admin, Password: admin123
+- **Dependencies**: Requires healthy MongoDB connection
+
+## Development Workflow
+
+### Daily Development
+```bash
+# Start development environment
+docker compose up -d
+
+# Monitor logs during development
+docker compose logs -f api frontend
+
+# Make code changes (auto-reloading enabled)
+# Test API endpoints
+# Test frontend functionality
+```
+
+### Database Operations
+```bash
+# Seed database with sample data
+docker compose exec api npm run seed
+
+# Access MongoDB shell
+docker compose exec mongo mongosh mernapp
+
+# View database via web interface
+# Open http://localhost:8081
+```
+
+### Debugging
+```bash
+# View logs for specific service
+docker compose logs api
+docker compose logs mongo
+
+# Execute commands inside containers
+docker compose exec api bash
+docker compose exec mongo mongosh
+
+# Restart specific service
+docker compose restart api
+```
+
+### Cleanup
+```bash
+# Stop all services
+docker compose down
+
+# Stop and remove volumes (careful - deletes data!)
+docker compose down -v
+
+# Remove built images
+docker compose down --rmi all
+```
+
+## Common Issues and Solutions
+
+### Services Won't Start
+- Check if ports 3000, 4000, 8081, 27017 are available
+- Verify Dockerfiles exist in frontend/ and backend/
+- Check docker-compose.yml syntax
+
+### Database Connection Issues
+- Wait for MongoDB health check to pass
+- Verify MONGO_URI environment variable
+- Check network connectivity between services
+
+### Hot Reloading Not Working
+- Ensure volume mounts are correct in docker-compose.yml
+- Check file permissions in mounted directories
+- Verify development Dockerfiles are configured properly
+
+## Next Steps
+
+1. Customize environment variables for your specific application
+2. Add additional services (Redis, Nginx, etc.) as needed
+3. Create production docker-compose.yml with optimized settings
+4. Set up CI/CD pipeline using these Docker configurations
+5. Consider adding monitoring and logging services
+=========================================================
 # docker compose up -d (start all services)
 # docker compose logs -f (follow logs from all services)
 # docker compose exec api npm run seed (run seed script)
@@ -627,14 +969,15 @@ services:
       - JWT_SECRET=your_jwt_secret
     # docker layer: Define dependency
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     # docker layer: Add healthcheck to ensure API is running properly
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:4000/api/health"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 5s
+      start_period: 30s
     # docker layer: Set restart policy
     restart: unless-stopped
 
@@ -654,11 +997,11 @@ services:
       - MONGO_INITDB_DATABASE=mernapp
     # docker layer: Add healthcheck to ensure MongoDB is running properly
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongo mongo:27017/mernapp --quiet
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 30s
     # docker layer: Set restart policy
     restart: unless-stopped
 
@@ -673,9 +1016,12 @@ services:
     environment:
       - ME_CONFIG_MONGODB_SERVER=mongo
       - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin123
     # docker layer: Define dependency
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     # docker layer: Set restart policy
     restart: unless-stopped
 
@@ -689,25 +1035,277 @@ networks:
   default:
     name: mern_network
     driver: bridge
+=========================================================
+# Full-Stack Web Application Project Guide
 
+## Project Overview
+
+This project creates a **production-ready, scalable full-stack web application** using a modern containerized architecture. The application consists of multiple interconnected services working together to provide a robust web platform.
+
+## What This Project Does
+
+### Core Functionality
+- **Web Application**: A complete web application with frontend user interface and backend API
+- **User Management**: Handle user authentication, authorization, and data management
+- **Content Management**: Serve static files, media uploads, and dynamic content
+- **Background Processing**: Handle time-intensive tasks asynchronously
+- **Task Scheduling**: Run automated tasks on schedules (reports, cleanup, notifications)
+- **Caching**: Improve performance with Redis-based caching
+- **Load Balancing**: Distribute traffic efficiently through Nginx reverse proxy
+
+### Architecture Components
+1. **React Frontend** - Modern, responsive user interface
+2. **Django Backend** - Robust API with business logic
+3. **PostgreSQL Database** - Reliable data persistence
+4. **Redis Cache** - Fast data caching and message brokering
+5. **Nginx Reverse Proxy** - Traffic routing and static file serving
+6. **Celery Workers** - Background task processing
+7. **Celery Beat** - Scheduled task management
+
+## Project Setup Steps
+
+### Prerequisites
+- Docker and Docker Compose installed
+- Basic knowledge of React, Django, and containerization
+- SSL certificates (for production HTTPS)
+
+### Step 1: Project Structure Setup
+```
+project-root/
+├── docker-compose.yml
+├── docker-compose.prod.yml
+├── .env
+├── nginx/
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   └── ssl/
+│       ├── cert.pem
+│       └── key.pem
+├── frontend/
+│   ├── Dockerfile
+│   ├── Dockerfile.dev
+│   ├── package.json
+│   └── src/
+├── backend/
+│   ├── Dockerfile
+│   ├── Dockerfile.dev
+│   ├── requirements.txt
+│   ├── manage.py
+│   └── config/
+└── README.md
 ```
 
-The MERN stack example above showcases several important concepts:
+### Step 2: Environment Configuration
+Create `.env` file with required variables:
+```bash
+# Database Configuration
+DB_PASSWORD=your_secure_db_password
 
-1. **Development-Focused Configuration**: By using Dockerfile.dev and mounting source code as volumes, the setup enables hot reloading for both frontend and backend code.
+# Django Configuration
+DJANGO_SECRET_KEY=your_django_secret_key_here
 
-2. **Service Communication**: The API container communicates with MongoDB using the service name (`mongo`), while the frontend is configured to access the API through the host machine (for browser access).
+# Optional: Additional environment variables
+REDIS_PASSWORD=your_redis_password
+SSL_EMAIL=your_email@example.com
+```
 
-3. **Health Checks**: Both API and MongoDB services include health checks to ensure they're genuinely ready, not just started.
+### Step 3: Frontend Development (React)
+```bash
+# Navigate to frontend directory
+cd frontend/
 
-4. **Data Persistence**: MongoDB data is stored in a named volume to persist between container restarts.
+# Install dependencies
+npm install
 
-5. **Development Tools**: The inclusion of mongo-express provides a web interface for database management, making development easier.
+# Key packages to install:
+npm install react react-dom react-router-dom axios
+npm install @testing-library/react @testing-library/jest-dom
 
-This setup creates a complete development environment that closely mirrors production, but with developer-friendly features like code reloading and admin interfaces.
-------------------------------------------------
-Full-Stack Web App using Docker Compose
-```yaml
+# Create Dockerfile for production build
+# Create Dockerfile.dev for development with hot-reload
+```
+
+### Step 4: Backend Development (Django)
+```bash
+# Navigate to backend directory
+cd backend/
+
+# Install Python dependencies
+pip install django djangorestframework
+pip install psycopg2-binary redis celery
+pip install django-cors-headers python-decouple
+
+# Create Django project structure
+django-admin startproject config .
+python manage.py startapp core
+
+# Configure settings.py for:
+# - Database connection to PostgreSQL
+# - Redis configuration
+# - CORS settings
+# - Static and media file handling
+# - Celery configuration
+```
+
+### Step 5: Database Setup
+```bash
+# Create database models
+python manage.py makemigrations
+
+# Run initial migrations
+docker compose exec -T backend python manage.py migrate
+
+# Create superuser
+docker compose exec -T backend python manage.py createsuperuser
+```
+
+### Step 6: Nginx Configuration
+Create `nginx/nginx.conf`:
+```nginx
+upstream frontend {
+    server frontend:3000;
+}
+
+upstream backend {
+    server backend:8000;
+}
+
+server {
+    listen 80;
+    server_name your-domain.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name your-domain.com;
+
+    ssl_certificate /etc/nginx/ssl/cert.pem;
+    ssl_certificate_key /etc/nginx/ssl/key.pem;
+
+    location / {
+        proxy_pass http://frontend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /api/ {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /static/ {
+        alias /var/www/static/;
+    }
+
+    location /media/ {
+        alias /var/www/media/;
+    }
+}
+```
+
+### Step 7: Celery Configuration
+In Django settings, configure Celery:
+```python
+# settings.py
+import os
+from celery import Celery
+
+# Celery Configuration
+CELERY_BROKER_URL = f'redis://{os.getenv("REDIS_HOST", "localhost")}:6379'
+CELERY_RESULT_BACKEND = f'redis://{os.getenv("REDIS_HOST", "localhost")}:6379'
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+```
+
+### Step 8: Docker Images Creation
+Create Dockerfiles for each service:
+- **Frontend Dockerfile**: Multi-stage build for optimized production image
+- **Backend Dockerfile**: Python environment with Django dependencies
+- **Nginx Dockerfile**: Custom configuration with SSL support
+
+### Step 9: Development Workflow
+```bash
+# Start development environment
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Run database migrations
+docker compose exec backend python manage.py migrate
+
+# Collect static files
+docker compose exec backend python manage.py collectstatic --noinput
+
+# Run tests
+docker compose exec backend python manage.py test
+docker compose exec frontend npm test
+```
+
+### Step 10: Production Deployment
+```bash
+# Build and start production stack
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Monitor services
+docker compose ps
+docker compose logs -f nginx
+```
+
+## Key Project Tasks and Responsibilities
+
+### Frontend Tasks
+- **User Interface Development**: Create responsive, modern UI components
+- **State Management**: Handle application state and user interactions
+- **API Integration**: Connect to backend services via REST API
+- **Authentication**: Implement user login/logout functionality
+- **Performance Optimization**: Code splitting, lazy loading, caching
+
+### Backend Tasks
+- **API Development**: Create RESTful endpoints for frontend consumption
+- **Database Design**: Model data relationships and migrations
+- **Authentication & Authorization**: Secure API endpoints
+- **Business Logic**: Implement core application functionality
+- **Background Tasks**: Handle file uploads, email sending, data processing
+
+### DevOps Tasks
+- **Container Orchestration**: Manage multi-service architecture
+- **Load Balancing**: Configure Nginx for optimal traffic distribution
+- **SSL/TLS Setup**: Secure communication with HTTPS
+- **Monitoring**: Health checks and service monitoring
+- **Backup Strategy**: Database and media file backups
+- **Scaling**: Horizontal scaling of services as needed
+
+### Database Tasks
+- **Schema Design**: Create efficient database structure
+- **Data Migration**: Handle schema changes and data updates
+- **Performance Tuning**: Optimize queries and indexing
+- **Backup & Recovery**: Ensure data persistence and recovery
+
+### Security Tasks
+- **Environment Variables**: Secure sensitive configuration
+- **Network Isolation**: Proper service communication
+- **Access Control**: Implement proper authentication/authorization
+- **SSL Configuration**: Secure data transmission
+- **Regular Updates**: Keep dependencies and images updated
+
+## Expected Outcomes
+
+Upon completion, this project delivers:
+- **Scalable Architecture**: Can handle increasing traffic and data
+- **Production-Ready**: Suitable for real-world deployment
+- **Maintainable Codebase**: Well-structured, documented, and testable
+- **Security Compliant**: Follows security best practices
+- **Performance Optimized**: Fast loading times and efficient resource usage
+- **Monitoring Capable**: Health checks and logging for operations
+
+This project serves as a comprehensive template for building modern, containerized web applications suitable for both development and production environments.
+
+
+============================================================
 # docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d (start production stack)
 # docker compose exec -T backend python manage.py migrate (run migrations)
 # docker compose exec -T backend python manage.py collectstatic --noinput (collect static files)
@@ -726,13 +1324,15 @@ services:
       - "443:443"
     # docker layer: Mount SSL certificates
     volumes:
-      - ./nginx/ssl:/etc/nginx/ssl
-      - static_files:/var/www/static
-      - media_files:/var/www/media
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - static_files:/var/www/static:ro
+      - media_files:/var/www/media:ro
     # docker layer: Depend on both frontend and backend services
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_healthy
     # docker layer: Set restart policy
     restart: always
 
@@ -752,7 +1352,15 @@ services:
       - NODE_ENV=production
     # docker layer: Define dependency
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    # docker layer: Add healthcheck for frontend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     # docker layer: Set restart policy
     restart: unless-stopped
 
@@ -781,15 +1389,17 @@ services:
       - REDIS_PORT=6379
     # docker layer: Define dependencies
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     # docker layer: Add healthcheck to ensure backend is running properly
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
     # docker layer: Set restart policy
     restart: unless-stopped
 
@@ -814,7 +1424,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 30s
     # docker layer: Set restart policy
     restart: unless-stopped
 
@@ -831,6 +1441,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 15s
     # docker layer: Set restart policy
     restart: unless-stopped
 
@@ -857,9 +1468,19 @@ services:
       - REDIS_PORT=6379
     # docker layer: Define dependencies
     depends_on:
-      - db
-      - redis
-      - backend
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    # docker layer: Add healthcheck for Celery worker
+    healthcheck:
+      test: ["CMD", "celery", "-A", "config", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     # docker layer: Set restart policy
     restart: unless-stopped
 
@@ -870,6 +1491,9 @@ services:
       context: ./backend
     # docker layer: Override command to run Celery Beat scheduler
     command: celery -A config beat -l info
+    # docker layer: Mount volume for beat schedule persistence
+    volumes:
+      - celery_beat_data:/app/celerybeat-schedule
     # docker layer: Set environment variables
     environment:
       - DEBUG=0
@@ -883,102 +1507,37 @@ services:
       - REDIS_PORT=6379
     # docker layer: Define dependencies
     depends_on:
-      - db
-      - redis
-      - backend
-      - celery
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    # docker layer: Add healthcheck for Celery beat
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "celery.*beat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     # docker layer: Set restart policy
     restart: unless-stopped
 
 # Define named volumes for data persistence
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
   static_files:
+    driver: local
   media_files:
+    driver: local
+  celery_beat_data:
+    driver: local
 
 # Define custom networks
 networks:
   default:
     name: fullstack_network
     driver: bridge
-
-```
-
-This full-stack web application example demonstrates a production-ready setup with several advanced features:
-
-1. **Layered Architecture**:
-   - Nginx acts as a reverse proxy and static file server
-   - React frontend for the user interface
-   - Django backend for the API
-   - PostgreSQL for data storage
-   - Redis for caching and message brokering
-   - Celery for background and scheduled tasks
-
-2. **Security Considerations**:
-   - Database port not exposed to the host
-   - Environment variables for sensitive information
-   - SSL certificate mounting for HTTPS
-
-3. **Scalability Features**:
-   - Separation of static and media files
-   - Background task processing with Celery
-   - Scheduled tasks with Celery Beat
-
-4. **High Availability**:
-   - Health checks for critical services
-   - Restart policies for all services
-
-5. **Data Management**:
-   - Named volumes for all persistent data
-   - Clear separation of different data types
-
-This setup demonstrates how Docker Compose can orchestrate a complex application with multiple interconnected services, creating a robust and scalable architecture.
-
-## Understanding Service Communication in Docker Compose
-
-When containers communicate in Docker Compose, several things happen behind the scenes:
-
-1. **DNS Resolution**: Docker's built-in DNS server resolves service names to container IP addresses.
-
-2. **Network Isolation**: Custom networks provide isolation, so services can only communicate with containers on the same network.
-
-3. **Port Exposure**: The `expose` directive makes ports available only to other containers, while `ports` makes them available to the host machine as well.
-
-4. **Load Balancing**: When scaling services (`docker compose up --scale service=3`), Docker handles load balancing between instances.
-
-Let's visualize the communication in our full-stack example:
-
-```
-External Users → Nginx (80/443) → Frontend (3000) → Backend (8000) → Database (5432)
-                                                 ↘→ Redis (6379)
-                                  ↓
-                       Background Processing
-                       Celery & Celery Beat
-```
-
-The architecture ensures that each service only has access to the components it needs to function, following the principle of least privilege.
-
-## Best Practices for Docker Compose Files
-
-1. **Use Environment Variables**: Externalize configuration to make your Compose file more flexible and secure.
-
-2. **Layer Your Compose Files**: Use multiple files for different environments:
-   ```bash
-   # Base configuration
-   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-   ```
-
-3. **Implement Health Checks**: Ensure services are truly ready, not just running.
-
-4. **Name Your Volumes**: Always use named volumes instead of anonymous volumes for better manageability.
-
-5. **Use Specific Image Tags**: Avoid `latest` to ensure reproducible builds.
-
-6. **Separate Networks**: Create network segregation for better security.
-
-7. **Include Documentation**: Add comments explaining your Compose file structure and purpose.
-
-Docker Compose transforms container management from a complex, command-heavy process into a declarative, version-controlled configuration. This makes it easier to set up development environments, test configurations, and even deploy simple production stacks.
-
-By understanding how services, networks, and volumes interact, you can create sophisticated multi-container applications that are both portable and maintainable—a key step toward modern containerized applications.
