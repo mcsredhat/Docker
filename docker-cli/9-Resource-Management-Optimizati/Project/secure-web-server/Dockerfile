@@ -36,5 +36,5 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=3s \
     CMD curl -f http://localhost:${PORT}/ || exit 1
 
-# Run the application
-CMD ["python", "app.py"]
+# Run with gunicorn for production
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT} --workers 2 app:application"]
