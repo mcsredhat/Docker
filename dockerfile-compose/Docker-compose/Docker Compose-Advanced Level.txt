@@ -75,7 +75,7 @@ For web applications, load balancing is essential when scaling services. Nginx w
 ### Sample Configuration
 
 ```yaml
-version: '3'
+version: '3.8'
 
 services:
   nginx:
@@ -96,7 +96,7 @@ services:
 
 The corresponding nginx.conf might look like:
 
-```
+```nginx
 events {
     worker_connections 1024;
 }
@@ -216,8 +216,11 @@ project/
   "name": "scalable-api",
   "version": "1.0.0",
   "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
-    "express": "^4.17.1"
+    "express": "^4.18.2"
   }
 }
 ```
@@ -240,26 +243,31 @@ app.get('/', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy', instance: instanceId });
+});
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`API server running on port ${PORT} (Instance: ${instanceId})`);
 });
 ```
 
 **api/Dockerfile**:
 ```dockerfile
-FROM node:14-alpine
+FROM node:18-alpine
 WORKDIR /app
-COPY package.json .
-RUN npm install
+COPY package*.json ./
+RUN npm ci --only=production
 COPY server.js .
 EXPOSE 3000
+USER node
 CMD ["node", "server.js"]
 ```
 
 ### Nginx Configuration
 
 **nginx/nginx.conf**:
-```
+```nginx
 events {
     worker_connections 1024;
 }
@@ -276,7 +284,13 @@ http {
             proxy_pass http://api_servers;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             add_header X-Upstream $upstream_addr always;
+        }
+
+        location /health {
+            proxy_pass http://api_servers;
+            proxy_set_header Host $host;
         }
     }
 }
@@ -286,7 +300,7 @@ http {
 
 **docker-compose.yml**:
 ```yaml
-version: '3'
+version: '3.8'
 
 services:
   nginx:
@@ -297,12 +311,18 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - api
+    restart: unless-stopped
 
   api:
     build: ./api
     expose:
       - "3000"
-    restart: always
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 ```
 
 ### Testing the Scaled Setup
@@ -340,8 +360,7 @@ project/
 ├── web/
 │   ├── Dockerfile
 │   ├── package.json
-│   ├── public/
-│   └── src/
+│   └── app.js
 ├── api/
 │   ├── Dockerfile
 │   ├── package.json
@@ -350,13 +369,15 @@ project/
 │   ├── Dockerfile
 │   ├── package.json
 │   └── worker.js
+├── nginx/
+│   └── nginx.conf
 └── docker-compose.yml
 ```
 
 ### Docker Compose File
 
 ```yaml
-version: '3'
+version: '3.8'
 
 services:
   web:
@@ -367,7 +388,7 @@ services:
       - API_URL=http://nginx
     depends_on:
       - nginx
-    restart: always
+    restart: unless-stopped
 
   nginx:
     image: nginx:latest
@@ -377,7 +398,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - api
-    restart: always
+    restart: unless-stopped
 
   api:
     build: ./api
@@ -387,8 +408,12 @@ services:
       - REDIS_URL=redis://redis:6379
     depends_on:
       - redis
-    restart: always
-    # No need to publish ports as nginx will handle routing
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   worker:
     build: ./worker
@@ -396,13 +421,14 @@ services:
       - REDIS_URL=redis://redis:6379
     depends_on:
       - redis
-    restart: always
+    restart: unless-stopped
 
   redis:
-    image: redis:alpine
+    image: redis:7-alpine
     volumes:
       - redis-data:/data
-    restart: always
+    restart: unless-stopped
+    command: redis-server --appendonly yes
 
 volumes:
   redis-data:
@@ -430,6 +456,11 @@ Check logs from all services:
 docker-compose logs -f
 ```
 
+View logs from a specific service:
+```bash
+docker-compose logs -f api
+```
+
 Test the system scaling under load:
 ```bash
 # Using a tool like Apache Bench
@@ -445,10 +476,9 @@ This mini-project demonstrates several important concepts:
 3. **Scaling different components**: API for handling requests, workers for background tasks
 4. **Load balancing**: Using Nginx as a reverse proxy
 5. **Resilience**: Using restart policies to handle failures
+6. **Health checks**: Monitoring container health and readiness
 
-These principles form the foundation of scalable containerized applications and prepare you for more advanced orchestration with Docker Swarm or Kubernetes.
 
-Would you like me to elaborate on any specific part of this lesson or provide more details about any of these concepts?
 ============================================================
 # Docker Compose - Advanced Level: Advanced Networking & Storage
 
@@ -463,8 +493,10 @@ When containers need to communicate or share data, Docker provides several power
 Container linking creates a secure channel for containers to communicate. While the legacy `--link` flag is deprecated, Docker Compose handles container connections seamlessly through defined networks:
 
 ```yaml
+version: '3.8'
 services:
   web:
+    image: nginx:alpine
     depends_on:
       - db
     networks:
@@ -472,6 +504,7 @@ services:
       - backend
   
   db:
+    image: postgres:13
     networks:
       - backend
 
@@ -487,11 +520,16 @@ In this example, the `web` service can communicate with the `db` service through
 Named volumes provide persistent storage that survives container restarts and can be shared between containers:
 
 ```yaml
+version: '3.8'
 services:
   db:
     image: postgres:13
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: myapp
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
 
 volumes:
   postgres_data:
@@ -511,8 +549,10 @@ Production applications often connect to external databases rather than containe
 ### Connecting to External Databases
 
 ```yaml
+version: '3.8'
 services:
   web:
+    image: myapp:latest
     environment:
       - DB_HOST=production-db.example.com
       - DB_PORT=5432
@@ -532,8 +572,10 @@ You can use environment variables in your Docker Compose file by:
 4. Add health checks to ensure your application waits for the database to be available:
 
 ```yaml
+version: '3.8'
 services:
   web:
+    image: myapp:latest
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
@@ -552,6 +594,7 @@ Docker offers several volume types for different requirements:
 
 1. **Named volumes** - Best for most production uses
    ```yaml
+   version: '3.8'
    volumes:
      mongodb_data:
        driver: local
@@ -559,13 +602,21 @@ Docker offers several volume types for different requirements:
 
 2. **Bind mounts** - Useful for development when you need to edit files directly
    ```yaml
-   volumes:
-     - ./config:/app/config:ro  # Read-only bind mount
+   version: '3.8'
+   services:
+     app:
+       image: myapp:latest
+       volumes:
+         - ./config:/app/config:ro  # Read-only bind mount
    ```
 
 3. **tmpfs mounts** - For ephemeral storage that needs high performance
    ```yaml
-   tmpfs: /tmp
+   version: '3.8'
+   services:
+     app:
+       image: myapp:latest
+       tmpfs: /tmp
    ```
 
 ### Volume Drivers
@@ -573,6 +624,7 @@ Docker offers several volume types for different requirements:
 Volume drivers extend Docker's storage capabilities:
 
 ```yaml
+version: '3.8'
 volumes:
   db_data:
     driver: rexray/ebs
@@ -638,6 +690,7 @@ The bridge network is Docker's default network mode, providing isolated networks
 ### Creating Custom Bridge Networks
 
 ```yaml
+version: '3.8'
 networks:
   my_custom_network:
     driver: bridge
@@ -663,8 +716,10 @@ Host networking mode removes network isolation between the container and the hos
 ### Configuration
 
 ```yaml
+version: '3.8'
 services:
   monitoring_agent:
+    image: monitoring-agent:latest
     network_mode: "host"
 ```
 
@@ -690,8 +745,10 @@ The "none" network mode completely isolates a container from networking.
 ### Configuration
 
 ```yaml
+version: '3.8'
 services:
   batch_processor:
+    image: batch-processor:latest
     network_mode: "none"
 ```
 
@@ -711,6 +768,7 @@ These advanced networking modes allow containers to appear as physical devices o
 Macvlan assigns a MAC address to each container, making it appear as a physical device on your network:
 
 ```yaml
+version: '3.8'
 networks:
   macvlan_network:
     driver: macvlan
@@ -731,12 +789,13 @@ Use cases include:
 IPvlan is similar to macvlan but shares the parent interface's MAC address:
 
 ```yaml
+version: '3.8'
 networks:
   ipvlan_network:
     driver: ipvlan
     driver_opts:
       parent: eth0
-      mode: l2
+      ipvlan_mode: l2
     ipam:
       config:
         - subnet: 192.168.1.0/24
@@ -762,8 +821,10 @@ Docker provides built-in DNS resolution for containers, allowing them to find ea
 ### Customizing DNS
 
 ```yaml
+version: '3.8'
 services:
   web:
+    image: nginx:alpine
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -786,6 +847,7 @@ Overlay networks enable communication between containers across multiple Docker 
 ### Creating Overlay Networks
 
 ```yaml
+version: '3.8'
 networks:
   my_overlay:
     driver: overlay
@@ -812,6 +874,7 @@ Let's build a practical example using MongoDB with named volumes for persistent 
 ```
 mongodb-demo/
 ├── docker-compose.yml
+├── .env
 ├── mongo-init.js
 └── app/
     ├── Dockerfile
@@ -881,6 +944,14 @@ volumes:
     driver: local
 ```
 
+### Environment Variables File
+
+**.env**:
+```
+MONGO_USERNAME=admin
+MONGO_PASSWORD=secretpassword
+```
+
 ### MongoDB Initialization Script
 
 **mongo-init.js**:
@@ -916,10 +987,10 @@ FROM node:14-alpine
 
 WORKDIR /app
 
-COPY package.json .
+COPY package.json ./
 RUN npm install
 
-COPY server.js .
+COPY server.js ./
 
 EXPOSE 3000
 
@@ -986,6 +1057,11 @@ app.post('/api/items', async (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK' });
 });
 
 // Start the server
@@ -1102,8 +1178,10 @@ services:
       - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-secretpassword}@postgres:5432/${POSTGRES_DB:-userdb}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-redispassword}@redis:6379
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: always
     networks:
       - frontend
@@ -1121,7 +1199,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -1137,7 +1215,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "--no-auth-warning", "auth", "${REDIS_PASSWORD:-redispassword}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -1243,7 +1321,7 @@ FROM node:14-alpine
 
 WORKDIR /app
 
-COPY package.json .
+COPY package.json ./
 RUN npm install
 
 COPY . .
@@ -1326,8 +1404,7 @@ const express = require('express');
 const { ApolloServer } = require('apollo-server-express');
 const { Sequelize, DataTypes } = require('sequelize');
 const redis = require('redis');
-const { promisify } = require('util');
-const typeDefs = require('./schema');
+const { gql } = require('apollo-server-express');
 
 // Initialize Express
 const app = express();
@@ -1339,10 +1416,59 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
   logging: process.env.NODE_ENV === 'development' ? console.log : false,
 });
 
-// Initialize Redis client
-const redisClient = redis.createClient(process.env.REDIS_URL);
-const getAsync = promisify(redisClient.get).bind(redisClient);
-const setAsync = promisify(redisClient.set).bind(redisClient);
+// Initialize Redis client (updated for redis v4+)
+const redisClient = redis.createClient({
+  url: process.env.REDIS_URL
+});
+
+// Connect to Redis
+redisClient.connect().catch(console.error);
+
+// Define GraphQL schema
+const typeDefs = gql`
+  type User {
+    id: ID!
+    username: String!
+    email: String!
+    posts: [Post!]!
+    comments: [Comment!]!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type Post {
+    id: ID!
+    title: String!
+    body: String
+    user: User!
+    comments: [Comment!]!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type Comment {
+    id: ID!
+    body: String!
+    user: User!
+    post: Post!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type Query {
+    user(id: ID!): User
+    users: [User!]!
+    post(id: ID!): Post
+    posts: [Post!]!
+    comments: [Comment!]!
+  }
+
+  type Mutation {
+    createUser(username: String!, email: String!, password: String!): User!
+    createPost(title: String!, body: String, userId: ID!): Post!
+    createComment(body: String!, userId: ID!, postId: ID!): Comment!
+  }
+`;
 
 // Define models
 const User = sequelize.define('User', {
@@ -1398,127 +1524,258 @@ Comment.belongsTo(User, { foreignKey: 'user_id' });
 Post.hasMany(Comment, { foreignKey: 'post_id' });
 Comment.belongsTo(Post, { foreignKey: 'post_id' });
 
+// Helper function for Redis operations
+const getFromCache = async (key) => {
+  try {
+    const cachedData = await redisClient.get(key);
+    return cachedData ? JSON.parse(cachedData) : null;
+  } catch (error) {
+    console.error('Redis get error:', error);
+    return null;
+  }
+};
+
+const setCache = async (key, data, expiration = 3600) => {
+  try {
+    await redisClient.setEx(key, expiration, JSON.stringify(data));
+  } catch (error) {
+    console.error('Redis set error:', error);
+  }
+};
+
+const deleteFromCache = async (key) => {
+  try {
+    await redisClient.del(key);
+  } catch (error) {
+    console.error('Redis delete error:', error);
+  }
+};
+
 // Define resolvers
 const resolvers = {
   Query: {
     // Get a user by ID
     user: async (_, { id }) => {
-      // Try to get from cache first
-      const cachedUser = await getAsync(`user:${id}`);
-      if (cachedUser) {
-        return JSON.parse(cachedUser);
+      try {
+        // Try to get from cache first
+        const cachedUser = await getFromCache(`user:${id}`);
+        if (cachedUser) {
+          return cachedUser;
+        }
+        
+        const user = await User.findByPk(id);
+        if (user) {
+          // Cache the result
+          await setCache(`user:${id}`, user, 3600);
+        }
+        return user;
+      } catch (error) {
+        console.error('Error fetching user:', error);
+        throw new Error('Failed to fetch user');
       }
-      
-      const user = await User.findByPk(id);
-      if (user) {
-        // Cache the result
-        await setAsync(`user:${id}`, JSON.stringify(user), 'EX', 3600);
-      }
-      return user;
     },
     
     // Get all users
     users: async () => {
-      const cachedUsers = await getAsync('users:all');
-      if (cachedUsers) {
-        return JSON.parse(cachedUsers);
+      try {
+        const cachedUsers = await getFromCache('users:all');
+        if (cachedUsers) {
+          return cachedUsers;
+        }
+        
+        const users = await User.findAll();
+        await setCache('users:all', users, 60);
+        return users;
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        throw new Error('Failed to fetch users');
       }
-      
-      const users = await User.findAll();
-      await setAsync('users:all', JSON.stringify(users), 'EX', 60);
-      return users;
     },
     
     // Get a post by ID
     post: async (_, { id }) => {
-      const cachedPost = await getAsync(`post:${id}`);
-      if (cachedPost) {
-        return JSON.parse(cachedPost);
+      try {
+        const cachedPost = await getFromCache(`post:${id}`);
+        if (cachedPost) {
+          return cachedPost;
+        }
+        
+        const post = await Post.findByPk(id);
+        if (post) {
+          await setCache(`post:${id}`, post, 3600);
+        }
+        return post;
+      } catch (error) {
+        console.error('Error fetching post:', error);
+        throw new Error('Failed to fetch post');
       }
-      
-      const post = await Post.findByPk(id);
-      if (post) {
-        await setAsync(`post:${id}`, JSON.stringify(post), 'EX', 3600);
-      }
-      return post;
     },
     
     // Get all posts
     posts: async () => {
-      const cachedPosts = await getAsync('posts:all');
-      if (cachedPosts) {
-        return JSON.parse(cachedPosts);
+      try {
+        const cachedPosts = await getFromCache('posts:all');
+        if (cachedPosts) {
+          return cachedPosts;
+        }
+        
+        const posts = await Post.findAll();
+        await setCache('posts:all', posts, 60);
+        return posts;
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+        throw new Error('Failed to fetch posts');
       }
-      
-      const posts = await Post.findAll();
-      await setAsync('posts:all', JSON.stringify(posts), 'EX', 60);
-      return posts;
     },
     
     // Get all comments
-    comments: async () => Comment.findAll(),
+    comments: async () => {
+      try {
+        return await Comment.findAll();
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+        throw new Error('Failed to fetch comments');
+      }
+    },
   },
   
   Mutation: {
     // Create a new user
     createUser: async (_, { username, email, password }) => {
-      // In a real app, you would hash the password here
-      const password_hash = password; // Simplified for demo
-      
-      const user = await User.create({
-        username,
-        email,
-        password_hash,
-      });
-      
-      // Invalidate users cache
-      redisClient.del('users:all');
-      
-      return user;
+      try {
+        // In a real app, you would hash the password here
+        const password_hash = password; // Simplified for demo
+        
+        const user = await User.create({
+          username,
+          email,
+          password_hash,
+        });
+        
+        // Invalidate users cache
+        await deleteFromCache('users:all');
+        
+        return user;
+      } catch (error) {
+        console.error('Error creating user:', error);
+        if (error.name === 'SequelizeUniqueConstraintError') {
+          throw new Error('Username or email already exists');
+        }
+        throw new Error('Failed to create user');
+      }
     },
     
     // Create a new post
     createPost: async (_, { title, body, userId }) => {
-      const post = await Post.create({
-        title,
-        body,
-        user_id: userId,
-      });
-      
-      // Invalidate posts cache
-      redisClient.del('posts:all');
-      
-      return post;
+      try {
+        // Verify user exists
+        const user = await User.findByPk(userId);
+        if (!user) {
+          throw new Error('User not found');
+        }
+
+        const post = await Post.create({
+          title,
+          body,
+          user_id: userId,
+        });
+        
+        // Invalidate posts cache
+        await deleteFromCache('posts:all');
+        
+        return post;
+      } catch (error) {
+        console.error('Error creating post:', error);
+        throw new Error(error.message || 'Failed to create post');
+      }
     },
     
     // Create a new comment
     createComment: async (_, { body, userId, postId }) => {
-      const comment = await Comment.create({
-        body,
-        user_id: userId,
-        post_id: postId,
-      });
-      
-      // Invalidate relevant post cache
-      redisClient.del(`post:${postId}`);
-      
-      return comment;
+      try {
+        // Verify user and post exist
+        const user = await User.findByPk(userId);
+        const post = await Post.findByPk(postId);
+        
+        if (!user) {
+          throw new Error('User not found');
+        }
+        if (!post) {
+          throw new Error('Post not found');
+        }
+
+        const comment = await Comment.create({
+          body,
+          user_id: userId,
+          post_id: postId,
+        });
+        
+        // Invalidate relevant post cache
+        await deleteFromCache(`post:${postId}`);
+        
+        return comment;
+      } catch (error) {
+        console.error('Error creating comment:', error);
+        throw new Error(error.message || 'Failed to create comment');
+      }
     },
   },
   
   User: {
-    posts: (user) => Post.findAll({ where: { user_id: user.id } }),
-    comments: (user) => Comment.findAll({ where: { user_id: user.id } }),
+    posts: async (user) => {
+      try {
+        return await Post.findAll({ where: { user_id: user.id } });
+      } catch (error) {
+        console.error('Error fetching user posts:', error);
+        return [];
+      }
+    },
+    comments: async (user) => {
+      try {
+        return await Comment.findAll({ where: { user_id: user.id } });
+      } catch (error) {
+        console.error('Error fetching user comments:', error);
+        return [];
+      }
+    },
   },
   
   Post: {
-    user: (post) => User.findByPk(post.user_id),
-    comments: (post) => Comment.findAll({ where: { post_id: post.id } }),
+    user: async (post) => {
+      try {
+        return await User.findByPk(post.user_id);
+      } catch (error) {
+        console.error('Error fetching post user:', error);
+        return null;
+      }
+    },
+    comments: async (post) => {
+      try {
+        return await Comment.findAll({ where: { post_id: post.id } });
+      } catch (error) {
+        console.error('Error fetching post comments:', error);
+        return [];
+      }
+    },
   },
   
   Comment: {
-    user: (comment) => User.findByPk(comment.user_id),
-    post: (comment) => Post.findByPk(comment.post_id),
+    user: async (comment) => {
+      try {
+        return await User.findByPk(comment.user_id);
+      } catch (error) {
+        console.error('Error fetching comment user:', error);
+        return null;
+      }
+    },
+    post: async (comment) => {
+      try {
+        return await Post.findByPk(comment.post_id);
+      } catch (error) {
+        console.error('Error fetching comment post:', error);
+        return null;
+      }
+    },
   },
 };
 
@@ -1527,27 +1784,62 @@ const server = new ApolloServer({
   typeDefs,
   resolvers,
   context: { User, Post, Comment },
+  formatError: (error) => {
+    console.error('GraphQL Error:', error);
+    return {
+      message: error.message,
+      code: error.extensions?.code,
+      path: error.path,
+    };
+  },
 });
 
-// Apply Apollo middleware
-server.applyMiddleware({ app });
-
-// Start the server
-app.listen(PORT, async () => {
+// Initialize database and start server
+async function startServer() {
   try {
+    // Test database connection
     await sequelize.authenticate();
     console.log('Connected to PostgreSQL database');
     
-    redisClient.on('connect', function() {
-      console.log('Connected to Redis');
+    // Sync database models (creates tables if they don't exist)
+    await sequelize.sync({ alter: true });
+    console.log('Database models synchronized');
+    
+    // Test Redis connection
+    await redisClient.ping();
+    console.log('Connected to Redis');
+    
+    // Apply Apollo middleware
+    await server.start();
+    server.applyMiddleware({ app });
+    
+    // Start the server
+    app.listen(PORT, () => {
+      console.log(`GraphQL server running at http://localhost:${PORT}${server.graphqlPath}`);
     });
     
-    console.log(`GraphQL server running at http://localhost:${PORT}${server.graphqlPath}`);
   } catch (error) {
-    console.error('Unable to connect to the database:', error);
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Shutting down gracefully...');
+  try {
+    await redisClient.quit();
+    await sequelize.close();
+    process.exit(0);
+  } catch (error) {
+    console.error('Error during shutdown:', error);
+    process.exit(1);
   }
 });
-```
+
+// Start the server
+startServer();
+
 
 ### Testing the GraphQL API
 

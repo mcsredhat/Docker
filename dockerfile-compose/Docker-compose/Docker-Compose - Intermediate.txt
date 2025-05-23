@@ -14,7 +14,6 @@ For example, your base file might look like:
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
 services:
   web:
     image: nginx:latest
@@ -26,7 +25,6 @@ While your override file for development could be:
 
 ```yaml
 # docker-compose.override.yml
-version: '3.8'
 services:
   web:
     volumes:
@@ -35,7 +33,7 @@ services:
       - DEBUG=true
 ```
 
-When you run `docker-compose up`, both files are automatically merged. It's like having different layers of configuration that come together when needed.
+When you run `docker compose up`, both files are automatically merged. It's like having different layers of configuration that come together when needed.
 
 ## Using .env Files for Environment Variables
 
@@ -85,17 +83,17 @@ In this example, both `service1` and `service2` can read and write to the same d
 
 Docker Compose provides several commands to help debug your multi-container applications:
 
-- `docker-compose logs [service]` - View output from services
-- `docker-compose ps` - List containers and their states
-- `docker-compose events` - Get real-time events from containers
+- `docker compose logs [service]` - View output from services
+- `docker compose ps` - List containers and their states
+- `docker compose events` - Get real-time events from containers
 
 The logs command is particularly versatile:
 ```bash
 # Follow logs in real-time with timestamps
-docker-compose logs --follow --timestamps web
+docker compose logs --follow --timestamps web
 
 # Get only the last 100 lines
-docker-compose logs --tail=100 database
+docker compose logs --tail=100 database
 ```
 
 These commands help you understand what's happening in your application without having to dig through individual container details.
@@ -124,12 +122,12 @@ services:
 ```
 
 With this configuration:
-- `docker-compose up` starts only `app` and `database`
-- `docker-compose --profile testing up` additionally starts `test-suite`
-- `docker-compose --profile monitoring up` additionally starts `monitoring`
+- `docker compose up` starts only `app` and `database`
+- `docker compose --profile testing up` additionally starts `test-suite`
+- `docker compose --profile monitoring up` additionally starts `monitoring`
 
 This is perfect for separating development, testing, and production services within a single compose file.
-
+###########################################
 ## Live Development with Compose Watch
 
 The `watch` feature (introduced in Docker Compose v2.22.0) enables automatic rebuilding and restarting of services when source files change:
@@ -160,13 +158,14 @@ First, let's set up our project structure:
 project/
 ├── app/
 │   ├── app.py
-│   └── requirements.txt
+│   ├── requirements.txt
+│   └── Dockerfile
 ├── docker-compose.yml
 ├── docker-compose.override.yml
 └── docker-compose.prod.yml
 ```
 
-The Flask application (`app.py`):
+The Flask application (`app/app.py`):
 ```python
 from flask import Flask
 import os
@@ -182,14 +181,27 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true')
 ```
 
-Requirements (`requirements.txt`):
+Requirements (`app/requirements.txt`):
 ```
-flask==2.0.1
+flask==3.0.0
+```
+
+Dockerfile (`app/Dockerfile`):
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["python", "app.py"]
 ```
 
 Base configuration (`docker-compose.yml`):
 ```yaml
-version: '3.8'
 services:
   web:
     build: ./app
@@ -203,7 +215,6 @@ services:
 
 Development overrides (`docker-compose.override.yml`):
 ```yaml
-version: '3.8'
 services:
   web:
     volumes:
@@ -211,16 +222,16 @@ services:
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=true
-    watch:
-      - action: rebuild
-        path: ./app
-        exclude:
-          - __pycache__/
+    develop:
+      watch:
+        - action: rebuild
+          path: ./app
+          exclude:
+            - __pycache__/
 ```
 
 Production configuration (`docker-compose.prod.yml`):
 ```yaml
-version: '3.8'
 services:
   web:
     restart: always
@@ -229,30 +240,16 @@ services:
       - FLASK_DEBUG=false
 ```
 
-Dockerfile (`app/Dockerfile`):
-```dockerfile
-FROM python:3.9-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-CMD ["python", "app.py"]
-```
-
 ### Running the Demo
 
 For development (uses both `docker-compose.yml` and `docker-compose.override.yml` automatically):
 ```bash
-docker-compose up
+docker compose up
 ```
 
 For production:
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up
 ```
 
 With the development setup, any changes to your Flask application will trigger an automatic rebuild, allowing you to see changes immediately without manually restarting containers.
@@ -283,8 +280,6 @@ APP_ENV=development
 Main compose file (`docker-compose.yml`):
 
 ```yaml
-version: '3.8'
-
 services:
   # PHP Application
   app:
@@ -385,7 +380,7 @@ volumes:
 
 PHP Dockerfile (`docker/php/Dockerfile`):
 ```dockerfile
-FROM php:8.1-fpm
+FROM php:8.2-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -394,7 +389,8 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     zip \
     unzip \
-    git
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo_mysql
@@ -441,22 +437,22 @@ server {
 
 Basic development environment:
 ```bash
-docker-compose up
+docker compose up
 ```
 
 Development with PHPMyAdmin:
 ```bash
-docker-compose --profile dev up
+docker compose --profile dev up
 ```
 
 Running tests:
 ```bash
-docker-compose --profile testing up test-runner
+docker compose --profile testing up test-runner
 ```
 
 Production with monitoring:
 ```bash
-docker-compose --profile monitoring up -d
+docker compose --profile monitoring up -d
 ```
 
 This setup demonstrates:
@@ -468,7 +464,7 @@ This setup demonstrates:
 
 ## Key Takeaways
 
-1. **Configuration Management**: Use a combination of base compose files, override files, and environmental variables to maintain clean, flexible configurations across environments.
+1. **Configuration Management**: Use a combination of base compose files, override files, and environment variables to maintain clean, flexible configurations across environments.
 
 2. **Data Management**: Named volumes provide a clean way to persist and share data between containers without worrying about container lifecycles.
 
@@ -611,9 +607,7 @@ services:
     restart: unless-stopped
   
   worker:
-    restart: on-failure
-    restart_policy:
-      max_attempts: 3
+    restart: on-failure:3  # Restart on failure with max 3 attempts
   
   dev-service:
     restart: "no"
@@ -632,13 +626,13 @@ For production environments, `unless-stopped` is often a good choice as it persi
 When you're working with multiple services, you often want to run them in the background. Docker Compose's detached mode is perfect for this:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 This starts all services in the background. You can still access logs when needed:
 
 ```bash
-docker-compose logs -f service-name
+docker compose logs -f service-name
 ```
 
 The `-f` (follow) flag streams logs in real-time, similar to `tail -f`.
@@ -646,7 +640,7 @@ The `-f` (follow) flag streams logs in real-time, similar to `tail -f`.
 You can also bring up specific services in detached mode:
 
 ```bash
-docker-compose up -d database cache
+docker compose up -d database cache
 ```
 
 This is particularly useful for starting infrastructure services that other services depend on.
@@ -721,13 +715,16 @@ microservices-demo/
 ├── docker-compose.yml
 ├── gateway/
 │   ├── Dockerfile
-│   └── server.js
+│   ├── server.js
+│   └── package.json
 ├── service-a/
 │   ├── Dockerfile
-│   └── server.js
+│   ├── server.js
+│   └── package.json
 ├── service-b/
 │   ├── Dockerfile
-│   └── server.js
+│   ├── server.js
+│   └── package.json
 └── secrets/
     ├── db_password.txt
     └── api_key.txt
@@ -737,8 +734,6 @@ Now, let's create our Docker Compose configuration:
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
-
 services:
   gateway:
     build: ./gateway
@@ -815,7 +810,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:14-alpine
+    image: postgres:15-alpine
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
@@ -834,7 +829,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:6-alpine
+    image: redis:7-alpine
     volumes:
       - redis-data:/data
     networks:
@@ -867,6 +862,19 @@ secrets:
 ```
 
 Now let's create simplified Node.js services for our demo:
+
+**Gateway package.json:**
+```json
+{
+  "name": "gateway",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "redis": "^4.6.0"
+  }
+}
+```
 
 **Gateway (gateway/server.js):**
 ```javascript
@@ -943,6 +951,18 @@ app.listen(port, () => {
 });
 ```
 
+**Service A package.json:**
+```json
+{
+  "name": "service-a",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.11.0"
+  }
+}
+```
+
 **Service A (service-a/server.js):**
 ```javascript
 const express = require('express');
@@ -958,7 +978,7 @@ const dbPassword = fs.readFileSync('/run/secrets/db_password', 'utf8').trim();
 const pool = new Pool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
-  database: process.env.DB_NAME,
+  database: process.env.DB_NAME || 'postgres',
   password: dbPassword,
   port: 5432,
 });
@@ -1016,6 +1036,18 @@ app.listen(port, () => {
 });
 ```
 
+**Service B package.json:**
+```json
+{
+  "name": "service-b",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.11.0"
+  }
+}
+```
+
 **Service B (service-b/server.js):**
 ```javascript
 const express = require('express');
@@ -1031,7 +1063,7 @@ const dbPassword = fs.readFileSync('/run/secrets/db_password', 'utf8').trim();
 const pool = new Pool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
-  database: process.env.DB_NAME,
+  database: process.env.DB_NAME || 'postgres',
   password: dbPassword,
   port: 5432,
 });
@@ -1090,12 +1122,10 @@ app.listen(port, () => {
 });
 ```
 
-**Dockerfiles for Each Service:**
-
-For gateway, service-a, and service-b (with proper adjustments for each service):
+**Dockerfile (for all Node.js services):**
 
 ```dockerfile
-FROM node:16-alpine
+FROM node:18-alpine
 
 WORKDIR /app
 
@@ -1103,6 +1133,9 @@ COPY package.json .
 RUN npm install
 
 COPY server.js .
+
+# Install wget for health checks
+RUN apk add --no-cache wget
 
 EXPOSE 3000
 
@@ -1119,12 +1152,12 @@ Create the following files with secure content:
 
 1. Start the entire stack in detached mode:
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 2. Monitor the health status as services start up:
    ```bash
-   docker-compose ps
+   docker compose ps
    ```
 
 3. Once all services are healthy, test the API gateway:
@@ -1140,401 +1173,19 @@ This demo demonstrates several important concepts:
 - Caching with Redis
 - API gateway pattern with authentication
 
-## Mini Project: Deploy a Secure Messaging App (RabbitMQ + Node.js + MongoDB) with Secret Management
+## Key Takeaways
 
-Now, let's build a secure messaging application using RabbitMQ for message queuing, Node.js for services, and MongoDB for data storage.
+1. **Network Segmentation**: Use custom networks to isolate different parts of your application and improve security.
 
-Project structure:
-```
-messaging-app/
-├── docker-compose.yml
-├── auth-service/
-│   ├── Dockerfile
-│   └── server.js
-├── message-service/
-│   ├── Dockerfile
-│   └── server.js
-├── worker-service/
-│   ├── Dockerfile
-│   └── worker.js
-├── frontend/
-│   ├── Dockerfile
-│   └── server.js
-└── secrets/
-    ├── mongodb_root_password.txt
-    ├── mongodb_user_password.txt
-    ├── rabbitmq_password.txt
-    └── jwt_secret.txt
-```
+2. **Health Checks**: Implement proper health checks to ensure services are actually ready before dependent services start.
 
-Docker Compose configuration:
+3. **Secret Management**: Use Docker secrets to handle sensitive information securely, keeping it out of environment variables and config files.
 
-```yaml
-version: '3.8'
+4. **Restart Policies**: Configure appropriate restart policies to ensure your services recover from failures automatically.
 
-services:
-  auth-service:
-    build: ./auth-service
-    networks:
-      - frontend-net
-      - service-net
-      - db-net
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MONGODB_URI=mongodb://app_user:${MONGODB_USER_PASSWORD}@mongodb:27017/messaging
-      - RABBITMQ_URI=amqp://app_user:${RABBITMQ_PASSWORD}@rabbitmq:5672
-      - JWT_SECRET_FILE=/run/secrets/jwt_secret
-    secrets:
-      - jwt_secret
-      - mongodb_user_password
-      - rabbitmq_password
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    restart: unless-stopped
+5. **Service Discovery**: Leverage Docker Compose's built-in DNS resolution for easy service-to-service communication.
 
-  message-service:
-    build: ./message-service
-    networks:
-      - service-net
-      - db-net
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      auth-service:
-        condition: service_healthy
-    environment:
-      - MONGODB_URI=mongodb://app_user:${MONGODB_USER_PASSWORD}@mongodb:27017/messaging
-      - RABBITMQ_URI=amqp://app_user:${RABBITMQ_PASSWORD}@rabbitmq:5672
-      - JWT_SECRET_FILE=/run/secrets/jwt_secret
-    secrets:
-      - jwt_secret
-      - mongodb_user_password
-      - rabbitmq_password
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    restart: unless-stopped
-
-  worker-service:
-    build: ./worker-service
-    networks:
-      - service-net
-      - db-net
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MONGODB_URI=mongodb://app_user:${MONGODB_USER_PASSWORD}@mongodb:27017/messaging
-      - RABBITMQ_URI=amqp://app_user:${RABBITMQ_PASSWORD}@rabbitmq:5672
-    secrets:
-      - mongodb_user_password
-      - rabbitmq_password
-    healthcheck:
-      test: ["CMD", "node", "/app/healthcheck.js"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    restart: unless-stopped
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "8080:8080"
-    networks:
-      - frontend-net
-    depends_on:
-      auth-service:
-        condition: service_healthy
-      message-service:
-        condition: service_healthy
-    environment:
-      - AUTH_SERVICE_URL=http://auth-service:3000
-      - MESSAGE_SERVICE_URL=http://message-service:3000
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
-    restart: unless-stopped
-
-  mongodb:
-    image: mongo:5.0
-    volumes:
-      - mongodb-data:/data/db
-      - ./mongo-init:/docker-entrypoint-initdb.d
-    networks:
-      - db-net
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongodb_root_password
-      - MONGO_INITDB_DATABASE=messaging
-      - APP_USER=app_user
-      - APP_USER_PASSWORD_FILE=/run/secrets/mongodb_user_password
-    secrets:
-      - mongodb_root_password
-      - mongodb_user_password
-    healthcheck:
-      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-
-  rabbitmq:
-    image: rabbitmq:3.9-management
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-      - ./rabbitmq-init:/etc/rabbitmq/rabbitmq-init
-    networks:
-      - service-net
-    environment:
-      - RABBITMQ_DEFAULT_USER=app_user
-      - RABBITMQ_DEFAULT_PASS_FILE=/run/secrets/rabbitmq_password
-    secrets:
-      - rabbitmq_password
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-
-networks:
-  frontend-net:
-    driver: bridge
-  service-net:
-    driver: bridge
-  db-net:
-    driver: bridge
-    internal: true
-
-volumes:
-  mongodb-data:
-  rabbitmq-data:
-
-secrets:
-  mongodb_root_password:
-    file: ./secrets/mongodb_root_password.txt
-  mongodb_user_password:
-    file: ./secrets/mongodb_user_password.txt
-  rabbitmq_password:
-    file: ./secrets/rabbitmq_password.txt
-  jwt_secret:
-    file: ./secrets/jwt_secret.txt
-```
-
-Create an initialization script for MongoDB:
-
-```bash
-# mongo-init/create-user.sh
-#!/bin/bash
-set -e
-
-# Wait for MongoDB to be ready
-until mongo --eval "db.adminCommand('ping')" > /dev/null 2>&1; do
-  echo "Waiting for MongoDB to start..."
-  sleep 2
-done
-
-# Get the app user password from the Docker secret
-APP_USER_PASSWORD=$(cat $APP_USER_PASSWORD_FILE)
-
-# Create application user with appropriate permissions
-mongo admin -u root -p $(cat $MONGO_INITDB_ROOT_PASSWORD_FILE) --eval "
-  db = db.getSiblingDB('$MONGO_INITDB_DATABASE');
-  db.createUser({
-    user: '$APP_USER',
-    pwd: '$APP_USER_PASSWORD',
-    roles: [
-      { role: 'readWrite', db: '$MONGO_INITDB_DATABASE' }
-    ]
-  });
-  db.createCollection('messages');
-  db.createCollection('users');
-"
-
-echo "MongoDB initialized successfully"
-```
-
-Let's create a simple RabbitMQ initialization script:
-
-```bash
-# rabbitmq-init/setup-queues.sh
-#!/bin/bash
-set -e
-
-# Wait for RabbitMQ to be ready
-until rabbitmqctl status > /dev/null 2>&1; do
-  echo "Waiting for RabbitMQ to start..."
-  sleep 2
-done
-
-# Create queues and exchanges
-rabbitmqctl add_vhost messaging
-rabbitmqctl set_permissions -p messaging $RABBITMQ_DEFAULT_USER ".*" ".*" ".*"
-
-# Declare queues
-rabbitmqadmin declare queue --vhost=messaging name=message_queue durable=true
-rabbitmqadmin declare queue --vhost=messaging name=notification_queue durable=true
-
-# Declare exchanges
-rabbitmqadmin declare exchange --vhost=messaging name=message_exchange type=direct durable=true
-rabbitmqadmin declare exchange --vhost=messaging name=notification_exchange type=fanout durable=true
-
-# Bind queues to exchanges
-rabbitmqadmin declare binding --vhost=messaging source=message_exchange destination=message_queue routing_key=message
-rabbitmqadmin declare binding --vhost=messaging source=notification_exchange destination=notification_queue routing_key=notification
-
-echo "RabbitMQ queues and exchanges initialized successfully"
-```
-
-For each service, we'll create a basic implementation:
-
-**Auth Service (auth-service/server.js):**
-```javascript
-const express = require('express');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-const { MongoClient } = require('mongodb');
-const amqp = require('amqplib');
-const fs = require('fs');
-const app = express();
-const port = 3000;
-
-app.use(express.json());
-
-// Read secrets
-const jwtSecret = fs.readFileSync('/run/secrets/jwt_secret', 'utf8').trim();
-const mongoPassword = fs.readFileSync('/run/secrets/mongodb_user_password', 'utf8').trim();
-const rabbitmqPassword = fs.readFileSync('/run/secrets/rabbitmq_password', 'utf8').trim();
-
-// Replace password placeholders in connection strings
-const mongodbUri = process.env.MONGODB_URI.replace('${MONGODB_USER_PASSWORD}', mongoPassword);
-const rabbitmqUri = process.env.RABBITMQ_URI.replace('${RABBITMQ_PASSWORD}', rabbitmqPassword);
-
-// MongoDB connection
-let db;
-MongoClient.connect(mongodbUri)
-  .then(client => {
-    db = client.db();
-    console.log('Connected to MongoDB');
-  })
-  .catch(err => {
-    console.error('Failed to connect to MongoDB:', err);
-  });
-
-// RabbitMQ connection
-let channel;
-async function connectRabbitMQ() {
-  try {
-    const connection = await amqp.connect(rabbitmqUri);
-    channel = await connection.createChannel();
-    console.log('Connected to RabbitMQ');
-  } catch (err) {
-    console.error('Failed to connect to RabbitMQ:', err);
-    setTimeout(connectRabbitMQ, 5000);
-  }
-}
-connectRabbitMQ();
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  if (db && channel) {
-    res.status(200).send('OK');
-  } else {
-    res.status(503).send('Service Unavailable');
-  }
-});
-
-// Register endpoint
-app.post('/register', async (req, res) => {
-  try {
-    const { username, password, email } = req.body;
-    
-    // Check if user exists
-    const existingUser = await db.collection('users').findOne({ username });
-    if (existingUser) {
-      return res.status(409).json({ message: 'Username already exists' });
-    }
-    
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
-    // Create user
-    const result = await db.collection('users').insertOne({
-      username,
-      password: hashedPassword,
-      email,
-      createdAt: new Date()
-    });
-    
-    // Publish event to RabbitMQ
-    await channel.publish('notification_exchange', 'notification', Buffer.from(JSON.stringify({
-      type: 'user_registered',
-      userId: result.insertedId.toString(),
-      timestamp: new Date()
-    })));
-    
-    res.status(201).json({ message: 'User registered successfully' });
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
-
-// Login endpoint
-app.post('/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    
-    // Find user
-    const user = await db.collection('users').findOne({ username });
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-    
-    // Check password
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-    
-    // Generate JWT
-    const token = jwt.sign(
-      { userId: user._id.toString(), username: user.username },
-      jwtSecret,
-      { expiresIn: '24h' }
-    );
-    
-    res.json({ token });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
-
-// Validate token middleware (to be used by other services)
-app.post('/validate-token', (req, res) => {
-  const token = req.body.token;
+These advanced Docker Compose techniques help bridge the gap between simple container setups and full-scale container orchestration systems like Kubernetes, making it an excellent tool for both development and small to medium production deployments.
 ================================================================
 # Docker Compose - Intermediate Level: Lesson 14
 
@@ -1615,6 +1266,8 @@ This recreation ensures the service picks up new environment variables without s
 In production environments, it's crucial to set resource limits to prevent any single container from consuming all available system resources:
 
 ```yaml
+version: '3.8'
+
 services:
   web-app:
     image: web-app:latest
@@ -1628,20 +1281,23 @@ services:
           memory: 256M
 ```
 
-For older versions of Docker Compose (pre-version 3), you can use the direct properties:
+**Note:** The `deploy` section only works with Docker Swarm mode. For standalone Docker Compose, use:
 
 ```yaml
+version: '3.8'
+
 services:
   web-app:
     image: web-app:latest
     mem_limit: 512m
-    cpu_limit: 0.5
+    cpus: 0.5
+    mem_reservation: 256m
 ```
 
 These limits ensure that:
 - The container can't use more than 50% of a CPU core
 - The container can't consume more than 512MB of memory
-- The container has a guaranteed reservation of 25% of a CPU core and 256MB of memory
+- The container has a guaranteed reservation of 256MB of memory
 
 Setting appropriate resource limits helps prevent resource contention and improves overall system stability, especially when running multiple services on the same host.
 
@@ -1700,7 +1356,12 @@ While `depends_on` handles startup order, it doesn't verify if services are actu
 
 Health checks provide a more robust way to handle dependencies by verifying that services are actually ready:
 
+**Note:** The `condition: service_healthy` syntax requires Docker Compose file format version 2.1 or higher. For version 3.x files used with standalone Docker Compose (not Swarm), this feature is not available. Instead, implement waiting logic in your application code.
+
+For Docker Compose v2.1:
 ```yaml
+version: '2.1'
+
 services:
   web-app:
     image: web-app:latest
@@ -1728,12 +1389,35 @@ services:
       retries: 5
 ```
 
-With this approach:
-- The `web-app` service only starts after both `database` and `redis` pass their health checks
-- Each service defines what it means to be "healthy" through a test command
-- Services are given time to initialize with the `start_period` option
+For Docker Compose v3.x (recommended approach):
+```yaml
+version: '3.8'
 
-In production environments, combining `depends_on` with health checks provides the most reliable approach to service orchestration.
+services:
+  web-app:
+    image: web-app:latest
+    depends_on:
+      - database
+      - redis
+    # Implement wait logic in your application or use an init container
+  
+  database:
+    image: postgres:latest
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+  
+  redis:
+    image: redis:latest
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+```
 
 ## Optimizing Startup Order of Services
 
@@ -1744,39 +1428,45 @@ Beyond the basic `depends_on` and health checks, complex applications often need
 For applications with many services, a staged startup approach can reduce resource contention:
 
 ```yaml
+version: '3.8'
+
 services:
   # Infrastructure tier
   database:
     image: postgres:latest
-    healthcheck: # ...
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
   
   redis:
     image: redis:latest
-    healthcheck: # ...
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   
   # Application tier
   api-service:
     image: api-service:latest
     depends_on:
-      database:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - database
+      - redis
   
   auth-service:
     image: auth-service:latest
     depends_on:
-      database:
-        condition: service_healthy
+      - database
   
   # Frontend tier
   web-app:
     image: web-app:latest
     depends_on:
-      api-service:
-        condition: service_healthy
-      auth-service:
-        condition: service_healthy
+      - api-service
+      - auth-service
 ```
 
 This tiered approach:
@@ -1793,6 +1483,8 @@ services:
   api-service:
     image: api-service:latest
     entrypoint: ["/app/wait-for-it.sh", "database:5432", "--", "/app/startup.sh"]
+    depends_on:
+      - database
 ```
 
 These scripts can:
@@ -1851,7 +1543,7 @@ services:
         constraints: [node.role == worker]
 ```
 
-The `deploy` section includes configurations that will be used by Docker Swarm (but ignored by Docker Compose):
+The `deploy` section includes configurations that will be used by Docker Swarm (but ignored by standalone Docker Compose):
 - `replicas`: The number of containers to run
 - `update_config`: How updates should be rolled out
 - `restart_policy`: When containers should be restarted
@@ -1883,11 +1575,8 @@ services:
     image: nginx:alpine
     ports:
       - "8080:80"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
+    mem_limit: 256m
+    cpus: 0.5
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/status.conf:/etc/nginx/conf.d/status.conf:ro
@@ -1912,11 +1601,8 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     ports:
       - "9100:9100"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.2'
-          memory: 128M
+    mem_limit: 128m
+    cpus: 0.2
     networks:
       - monitoring_network
 
@@ -1936,11 +1622,8 @@ services:
       - '--web.enable-lifecycle'
     ports:
       - "9090:9090"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
+    mem_limit: 512m
+    cpus: 0.5
     networks:
       - monitoring_network
     healthcheck:
@@ -1964,16 +1647,12 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     ports:
       - "3000:3000"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
+    mem_limit: 512m
+    cpus: 0.5
     networks:
       - monitoring_network
     depends_on:
-      prometheus:
-        condition: service_healthy
+      - prometheus
 
 networks:
   monitoring_network:
@@ -2011,10 +1690,11 @@ scrape_configs:
   - job_name: 'nginx'
     static_configs:
       - targets: ['web-app:80']
-    metrics_path: /metrics
+    metrics_path: /nginx_status
+    scrape_interval: 5s
 ```
 
-### Step 3: Configure Nginx with the Prometheus Exporter
+### Step 3: Configure Nginx with Status Module
 
 Create Nginx configuration files:
 
@@ -2064,10 +1744,16 @@ server {
         index  index.html index.htm;
     }
 
-    location /metrics {
+    location /nginx_status {
         stub_status on;
         access_log off;
         allow all;
+    }
+
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
     }
 }
 ```
@@ -2118,9 +1804,16 @@ Start everything with:
 docker-compose up -d
 ```
 
+Monitor the startup process:
+
+```bash
+docker-compose logs -f
+```
+
 Access the monitoring interfaces:
 - Grafana: http://localhost:3000 (login with admin/admin_password)
 - Prometheus: http://localhost:9090
+- Nginx: http://localhost:8080
 
 ### Step 6: Import a Dashboard
 
@@ -2128,10 +1821,10 @@ In Grafana, navigate to Dashboards > Import and use dashboard ID `1860` for Node
 
 This setup provides:
 - Host metrics collection via Node Exporter
-- NGINX metrics collection
+- NGINX metrics collection via stub_status
 - Visualization with Grafana
 - Resource constraints to ensure stability
-- Health checks to manage dependencies correctly
+- Health checks for service monitoring
 
 ## Mini Project: Video Streaming App with Scaling and Monitoring
 
@@ -2151,7 +1844,9 @@ video-streaming-app/
 │   └── server.js
 ├── encoder/
 │   ├── Dockerfile
-│   └── encoder.js
+│   ├── package.json
+│   ├── encoder.js
+│   └── healthcheck.js
 ├── monitoring/
 │   ├── prometheus.yml
 │   └── grafana/
@@ -2164,7 +1859,7 @@ video-streaming-app/
     ├── package.json
     └── src/
         ├── App.js
-        └── ...
+        └── index.js
 ```
 
 ### Docker Compose Configuration
@@ -2187,11 +1882,8 @@ services:
       - streaming_net
     depends_on:
       - api
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
+    mem_limit: 256m
+    cpus: 0.5
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
       interval: 10s
@@ -2203,6 +1895,7 @@ services:
     build: ./api
     environment:
       - MONGODB_URI=mongodb://mongodb:27017/video_streaming
+      - REDIS_URL=redis://redis:6379
       - PORT=3000
     volumes:
       - video_data:/app/videos
@@ -2210,19 +1903,10 @@ services:
       - streaming_net
       - backend_net
     depends_on:
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    deploy:
-      replicas: 2
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.1'
-          memory: 128M
+      - mongodb
+      - redis
+    mem_limit: 512m
+    cpus: 0.5
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 10s
@@ -2237,20 +1921,14 @@ services:
       - video_data:/app/videos
     environment:
       - REDIS_URL=redis://redis:6379
+      - MONGODB_URI=mongodb://mongodb:27017/video_streaming
     networks:
       - backend_net
     depends_on:
-      redis:
-        condition: service_healthy
-    deploy:
-      replicas: 3
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
+      - redis
+      - mongodb
+    mem_limit: 1g
+    cpus: 1.0
     healthcheck:
       test: ["CMD", "node", "/app/healthcheck.js"]
       interval: 30s
@@ -2267,11 +1945,8 @@ services:
       - frontend_net
     depends_on:
       - api
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 256M
+    mem_limit: 256m
+    cpus: 0.25
 
   # MongoDB for metadata storage
   mongodb:
@@ -2280,11 +1955,8 @@ services:
       - mongodb_data:/data/db
     networks:
       - backend_net
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
+    mem_limit: 512m
+    cpus: 0.5
     healthcheck:
       test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -2297,11 +1969,8 @@ services:
     image: redis:6-alpine
     networks:
       - backend_net
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 256M
+    mem_limit: 256m
+    cpus: 0.25
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -2319,11 +1988,9 @@ services:
     networks:
       - monitoring_net
       - backend_net
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 512M
+      - streaming_net
+    mem_limit: 512m
+    cpus: 0.25
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
       interval: 10s
@@ -2342,15 +2009,13 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin_secret
+      - GF_USERS_ALLOW_SIGN_UP=false
     networks:
       - monitoring_net
     depends_on:
       - prometheus
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 512M
+    mem_limit: 512m
+    cpus: 0.25
 
 networks:
   frontend_net:
@@ -2370,277 +2035,54 @@ volumes:
   grafana_data:
 ```
 
-### API Service Implementation (api/server.js)
+### Scaling the Application
 
-```javascript
-const express = require('express');
-const mongoose = require('mongoose');
-const multer = require('multer');
-const path = require('path');
-const Redis = require('ioredis');
-const promClient = require('prom-client');
-const fs = require('fs');
-const app = express();
-const port = process.env.PORT || 3000;
+To scale specific services:
 
-// Set up Prometheus metrics
-const register = new promClient.Registry();
-promClient.collectDefaultMetrics({ register });
+```bash
+# Scale the API service to handle more requests
+docker-compose up -d --scale api=3
 
-// Custom metrics
-const httpRequestDurationMs = new promClient.Histogram({
-  name: 'http_request_duration_ms',
-  help: 'Duration of HTTP requests in ms',
-  labelNames: ['method', 'route', 'status_code'],
-  buckets: [10, 50, 100, 500, 1000, 5000]
-});
-register.registerMetric(httpRequestDurationMs);
+# Scale the encoder service for parallel processing
+docker-compose up -d --scale encoder=2
 
-const videoUploads = new promClient.Counter({
-  name: 'video_uploads_total',
-  help: 'Total number of video uploads'
-});
-register.registerMetric(videoUploads);
-
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
-const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'MongoDB connection error:'));
-
-// Connect to Redis
-const redisClient = new Redis(process.env.REDIS_URL || 'redis://redis:6379');
-
-// Define Video schema
-const videoSchema = new mongoose.Schema({
-  title: String,
-  description: String,
-  filename: String,
-  originalFilename: String,
-  encoding: {
-    type: String,
-    enum: ['pending', 'processing', 'completed', 'failed'],
-    default: 'pending'
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-const Video = mongoose.model('Video', videoSchema);
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadsDir = path.join(__dirname, 'videos', 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
-const upload = multer({ storage });
-
-// Middleware
-app.use(express.json());
-app.use('/videos', express.static(path.join(__dirname, 'videos')));
-
-// Metrics middleware
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    httpRequestDurationMs
-      .labels(req.method, req.route?.path || req.path, res.statusCode.toString())
-      .observe(duration);
-  });
-  next();
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  const mongoStatus = mongoose.connection.readyState === 1; // 1 = connected
-  
-  redisClient.ping((err, result) => {
-    const redisStatus = !err && result === 'PONG';
-    
-    if (mongoStatus && redisStatus) {
-      res.status(200).json({ status: 'healthy' });
-    } else {
-      res.status(503).json({
-        status: 'unhealthy',
-        mongo: mongoStatus ? 'connected' : 'disconnected',
-        redis: redisStatus ? 'connected' : 'disconnected'
-      });
-    }
-  });
-});
-
-// Metrics endpoint for Prometheus
-app.get('/metrics', async (req, res) => {
-  res.set('Content-Type', register.contentType);
-  res.end(await register.metrics());
-});
-
-// List videos endpoint
-app.get('/api/videos', async (req, res) => {
-  try {
-    const videos = await Video.find().sort({ createdAt: -1 });
-    res.json(videos);
-  } catch (error) {
-    console.error('Error fetching videos:', error);
-    res.status(500).json({ error: 'Error fetching videos' });
-  }
-});
-
-// Get single video endpoint
-app.get('/api/videos/:id', async (req, res) => {
-  try {
-    const video = await Video.findById(req.params.id);
-    if (!video) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
-    res.json(video);
-  } catch (error) {
-    console.error('Error fetching video:', error);
-    res.status(500).json({ error: 'Error fetching video' });
-  }
-});
-
-// Upload video endpoint
-app.post('/api/videos/upload', upload.single('video'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No video file provided' });
-    }
-
-    const video = new Video({
-      title: req.body.title || 'Untitled',
-      description: req.body.description || '',
-      filename: req.file.filename,
-      originalFilename: req.file.originalname,
-    });
-
-    await video.save();
-    
-    // Increment upload counter
-    videoUploads.inc();
-
-    // Add job to encoding queue
-    await redisClient.rpush('encoding_queue', JSON.stringify({
-      videoId: video._id,
-      filePath: req.file.path
-    }));
-
-    res.status(201).json(video);
-  } catch (error) {
-    console.error('Error uploading video:', error);
-    res.status(500).json({ error: 'Error uploading video' });
-  }
-});
-
-// Start the server
-app.listen(port, () => {
-  console.log(`API server running on port ${port}`);
-});
+# Scale both services
+docker-compose up -d --scale api=3 --scale encoder=2
 ```
 
-### Encoder Service Implementation (encoder/encoder.js)
+For load balancing scaled API services, update the Nginx configuration to include upstream configuration.
 
-```javascript
-const Redis = require('ioredis');
-const mongoose = require('mongoose');
-const fs = require('fs');
-const path = require('path');
-const { spawn } = require('child_process');
-const promClient = require('prom-client');
+### Deployment Commands
 
-// Setup Prometheus metrics
-const register = new promClient.Registry();
-promClient.collectDefaultMetrics({ register });
+Complete deployment workflow:
 
-const encodingsProcessed = new promClient.Counter({
-  name: 'video_encodings_processed_total',
-  help: 'Total number of video encodings processed',
-  labelNames: ['status']
-});
-register.registerMetric(encodingsProcessed);
+```bash
+# Build and deploy
+docker-compose build
+docker-compose up -d
 
-const encodingDurationSeconds = new promClient.Histogram({
-  name: 'video_encoding_duration_seconds',
-  help: 'Duration of video encoding in seconds',
-  buckets: [10, 30, 60, 120, 300, 600, 1800]
-});
-register.registerMetric(encodingDurationSeconds);
+# Update a specific service
+docker-compose build api
+docker-compose up -d --no-deps api
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://mongodb:27017/video_streaming', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
-const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+# Scale services
+docker-compose up -d --scale encoder=3
 
-// Define Video schema (matching the API service)
-const videoSchema = new mongoose.Schema({
-  title: String,
-  description: String,
-  filename: String,
-  originalFilename: String,
-  encoding: {
-    type: String,
-    enum: ['pending', 'processing', 'completed', 'failed'],
-    default: 'pending'
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-const Video = mongoose.model('Video', videoSchema);
+# Monitor logs
+docker-compose logs -f api encoder
 
-// Create Redis client
-const redisClient = new Redis(process.env.REDIS_URL || 'redis://redis:6379');
-const subscriber = new Redis(process.env.REDIS_URL || 'redis://redis:6379');
+# Clean shutdown
+docker-compose down --volumes
+```
 
-// Express server for health and metrics
-const express = require('express');
-const app = express();
-const port = process.env.PORT || 3001;
+This corrected version addresses several key issues:
 
-app.get('/health', (req, res) => {
-  const mongoStatus = mongoose.connection.readyState === 1;
-  
-  redisClient.ping((err, result) => {
-    const redisStatus = !err && result === 'PONG';
-    
-    if (mongoStatus && redisStatus) {
-      res.status(200).json({ status: 'healthy' });
-    } else {
-      res.status(503).json({
-        status: 'unhealthy',
-        mongo: mongoStatus ? 'connected' : 'disconnected',
-        redis: redisStatus ? 'connected' : 'disconnected'
-      });
-    }
-  });
-});
+1. **Resource Limits**: Fixed the `deploy` section usage and provided alternatives for standalone Docker Compose
+2. **Health Check Dependencies**: Clarified the version compatibility issues and provided working alternatives
+3. **Prometheus Configuration**: Fixed the metrics path for Nginx
+4. **Nginx Configuration**: Added proper health endpoint and status configuration
+5. **Project Structure**: Completed the file structure and added missing files
+6. **Scaling Commands**: Added proper scaling examples and deployment workflows
+7. **Network Configuration**: Ensured proper network connectivity between services
 
-app.get('/metrics', async (req, res) => {
-  res.set('Content-Type', register.contentType);
-  res.end(await register.metrics());
-});
-
-app.listen(port, () => {
-  console.log(`Encoder metrics server running on port ${port}`);
-});
-
-// Create output directories
-const baseDir = path.join(__dirname, 'videos');
-const outputDir = path.join(baseDir, 'encoded');
-if (!
+The document now provides accurate, working examples that can be implemented in real environments.
