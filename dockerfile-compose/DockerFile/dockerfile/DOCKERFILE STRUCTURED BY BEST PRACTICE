@@ -8,44 +8,47 @@
 # 1. FROM - Base Image Selection
 # ==============================================================================
 # Use specific version tags for reproducibility
-# Equivalent Docker CLI: docker pull python:3.11-slim
+# Build-time: Downloads base image during docker build
+# CLI equivalent: docker pull python:3.11-slim
 FROM python:3.11-slim
 
 # ==============================================================================
-# 2. LABEL - Image Metadata (OCI Standard)
+# 2. SHELL - Override Default Shell (Move early for RUN commands)
 # ==============================================================================
-# Add metadata early as it rarely changes
-# Equivalent Docker CLI: docker build --label "key=value" .
-# View with: docker inspect <image> | jq '.[0].Config.Labels'
+# Set shell for RUN commands (useful for advanced scripting)
+# Runtime equivalent: docker run -it <image> /bin/bash -o pipefail -c "your-command"
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# ==============================================================================
+# 3. LABEL - Image Metadata (OCI Standard)
+# ==============================================================================
+# Add metadata early as it rarely changes (build-time only)
+# Build with labels: docker build --label "maintainer=dev@example.com" --label "version=2.0.0" .
+# View labels: docker inspect <image> --format='{{json .Config.Labels}}'
 LABEL maintainer="dev@example.com" \
       version="2.0.0" \
       description="Production-ready Flask application with advanced Docker features" \
       org.opencontainers.image.title="Flask Advanced App" \
-      org.opencontainers.image.description="Enhanced Flask application demonstrating Docker best practices" \
-      org.opencontainers.image.version="2.0.0" \
-      org.opencontainers.image.authors="dev@example.com" \
-      org.opencontainers.image.source="https://github.com/example/flask-advanced" \
-      org.opencontainers.image.documentation="https://docs.example.com/flask-app" \
-      org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.vendor="Example Corp"
+      project.type="web-application" \
+      project.language="python" \
+      project.framework="flask"
 
 # ==============================================================================
-# 3. ARG - Build-time Variables
+# 4. ARG - Build-time Variables
 # ==============================================================================
 # Define build arguments before ENV to use in environment variables
-# Equivalent Docker CLI: docker build --build-arg APP_ENV=production .
+# Build with args: docker build --build-arg APP_ENV=production --build-arg USER_ID=1000 --build-arg GROUP_ID=1000 .
 ARG APP_ENV=production
 ARG PYTHON_VERSION=3.11
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 ARG APP_PORT=5000
-ARG HEALTH_CHECK_URL=http://localhost:5000/health
 
 # ==============================================================================
-# 4. ENV - Runtime Environment Variables
+# 5. ENV - Runtime Environment Variables
 # ==============================================================================
 # Set environment variables using ARG values and Python-specific settings
-# Equivalent Docker CLI: docker run -e APP_ENV=production <image>
+# Runtime equivalent: docker run -e APP_ENV=production -e PYTHONDONTWRITEBYTECODE=1 -e FLASK_APP=src/app.py <image>
 ENV APP_ENV=${APP_ENV} \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -57,13 +60,14 @@ ENV APP_ENV=${APP_ENV} \
     FLASK_RUN_HOST=0.0.0.0 \
     FLASK_RUN_PORT=${APP_PORT} \
     PATH="/home/appuser/.local/bin:${PATH}" \
-    DEBIAN_FRONTEND=noninteractive
+    DEBIAN_FRONTEND=noninteractive \
+    HEALTH_CHECK_URL=http://localhost:5000/health
 
 # ==============================================================================
-# 5. RUN - System Setup and Dependencies
+# 6. RUN - System Setup and Dependencies
 # ==============================================================================
-# Install system dependencies and create user (grouped for optimal caching)
-# Equivalent Docker CLI: docker run --rm -it python:3.11-slim bash -c "apt-get update..."
+# Build-time execution: Commands run during docker build
+# Runtime equivalent: docker exec <container> bash -c "apt-get update && apt-get install..."
 
 # System packages installation
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -83,36 +87,41 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && pip install --upgrade pip setuptools wheel
 
 # User and group creation with specific IDs
-# Equivalent Docker CLI: docker run bash -c "groupadd -g 1000 appgroup && useradd -u 1000..."
+# Build-time execution: Creates user during image build
+# Runtime equivalent: docker exec <container> bash -c "groupadd -g 1000 appgroup && useradd..."
 RUN groupadd -g ${GROUP_ID} appgroup \
     && useradd -u ${USER_ID} -g appgroup -M -s /bin/bash appuser \
     && mkdir -p /home/appuser \
     && chown -R appuser:appgroup /home/appuser
 
 # ==============================================================================
-# 6. WORKDIR - Set Working Directory
+# 7. WORKDIR - Set Working Directory
 # ==============================================================================
-# Set working directory and ensure proper ownership
-# Equivalent Docker CLI: docker run -w /app <image>
+# Set working directory for subsequent instructions
+# Runtime equivalent: docker run -w /app <image>
 WORKDIR /app
 
 # Create application directories with proper ownership
+# Build-time execution: Creates directories during image build
+# Runtime equivalent: docker exec <container> mkdir -p /app/{src,static,templates,logs,uploads,instance,tests}
 RUN mkdir -p /app/{src,static,templates,logs,uploads,instance,tests} \
     && chown -R appuser:appgroup /app
 
 # ==============================================================================
-# 7. COPY/ADD - File Operations (Dependency Files First)
+# 8. COPY/ADD - File Operations (Dependency Files First)
 # ==============================================================================
-# Copy dependency files first for optimal Docker layer caching
-# Equivalent Docker CLI: docker cp requirements.txt <container>:/app/
+# Build-time file operations: Files copied during docker build
+# Runtime equivalent: docker cp <src> <container>:<dest>
 
-# Copy Python dependency files
+# Copy Python dependency files (build-time only)
 COPY --chown=appuser:appgroup requirements*.txt ./
 COPY --chown=appuser:appgroup pyproject.toml setup.py ./
 
 # Install Python dependencies as root for system-wide installation
-# Equivalent Docker CLI: docker exec <container> pip install -r requirements.txt
+# Build-time execution: Installs packages during image build
+# Runtime equivalent: docker exec <container> pip install -r requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir gunicorn \
     && if [ "${APP_ENV}" = "development" ] && [ -f requirements-dev.txt ]; then \
          pip install --no-cache-dir -r requirements-dev.txt; \
        fi \
@@ -120,12 +129,16 @@ RUN pip install --no-cache-dir -r requirements.txt \
          pip install --no-cache-dir -e .; \
        fi
 
-# ADD example - Fetch remote configuration or extract archives
-# Equivalent Docker CLI: wget <url> && docker cp <file> <container>:/tmp/
-ADD --chown=appuser:appgroup https://raw.githubusercontent.com/docker-library/hello-world/master/hello.sh /tmp/hello.sh
+# Fetch remote file with error handling (build-time only)
+# Better approach than ADD for remote files with error handling
+# Runtime equivalent: docker exec <container> wget -O /tmp/hello.sh <url>
+RUN wget -O /tmp/hello.sh https://raw.githubusercontent.com/docker-library/hello-world/master/hello.sh \
+    && chown appuser:appgroup /tmp/hello.sh \
+    && chmod +x /tmp/hello.sh \
+    || echo "Warning: Could not download hello.sh, continuing without it"
 
 # Copy application source code (changes frequently, so comes last)
-# Equivalent Docker CLI: docker cp src/ <container>:/app/src/
+# Build-time file operations: Application files copied during docker build
 COPY --chown=appuser:appgroup src/ ./src/
 COPY --chown=appuser:appgroup static/ ./static/
 COPY --chown=appuser:appgroup templates/ ./templates/
@@ -133,58 +146,60 @@ COPY --chown=appuser:appgroup tests/ ./tests/
 COPY --chown=appuser:appgroup *.py ./
 COPY --chown=appuser:appgroup *.cfg *.ini *.json ./
 
-# Set permissions for scripts and create necessary files
-RUN chmod +x /tmp/hello.sh \
-    && touch /app/logs/app.log \
+# Set permissions and create necessary files
+# Build-time execution: File permissions set during image build
+# Runtime equivalent: docker exec <container> touch /app/logs/app.log
+RUN touch /app/logs/app.log \
     && chown -R appuser:appgroup /app
 
 # ==============================================================================
-# 8. USER - Security Context
+# 9. USER - Security Context
 # ==============================================================================
 # Switch to non-root user for security (always after file operations)
-# Equivalent Docker CLI: docker exec -u appuser <container> <command>
+# Runtime equivalent: docker exec -u appuser <container> <command>
 USER appuser
 
 # ==============================================================================
-# 9. VOLUME - Persistent Data
+# 10. VOLUME - Persistent Data
 # ==============================================================================
 # Define volume mount points for persistent data
-# Equivalent Docker CLI: docker run -v /app/logs:/host/logs <image>
+# Runtime equivalent: docker run -v /app/logs:/host/logs -v /app/uploads:/host/uploads <image>
 VOLUME ["/app/logs", "/app/uploads", "/app/instance"]
 
 # ==============================================================================
-# 10. EXPOSE - Port Documentation
+# 11. EXPOSE - Port Documentation
 # ==============================================================================
 # Document exposed ports (doesn't actually publish them)
-# Equivalent Docker CLI: docker run -p 5000:5000 -p 8080:8080 <image>
+# Runtime equivalent: docker run -p 5000:5000 -p 8080:8080 -p 9090:9090 <image>
 EXPOSE ${APP_PORT} 8080 9090
 
 # ==============================================================================
-# 11. HEALTHCHECK - Container Health Monitoring
+# 12. HEALTHCHECK - Container Health Monitoring
 # ==============================================================================
 # Define health check for container orchestration
-# Equivalent Docker CLI: docker exec <container> curl -f http://localhost:5000/health
+# Runtime equivalent: docker run \
+#   --health-cmd="curl -f http://localhost:5000/health || exit 1" \
+#   --health-interval=30s \
+#   --health-timeout=10s \
+#   --health-start-period=45s \
+#   --health-retries=3 \
+#   <image>
 HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
-    CMD curl -f ${HEALTH_CHECK_URL} || exit 1
+    CMD curl -f $HEALTH_CHECK_URL || exit 1
 
 # ==============================================================================
-# 12. STOPSIGNAL - Graceful Shutdown
+# 13. STOPSIGNAL - Graceful Shutdown
 # ==============================================================================
 # Specify signal for graceful container shutdown
-# Equivalent Docker CLI: docker stop --signal=SIGTERM <container>
+# Runtime equivalent: docker stop --signal=SIGTERM <container>
 STOPSIGNAL SIGTERM
-
-# ==============================================================================
-# 13. SHELL - Override Default Shell
-# ==============================================================================
-# Set shell for RUN commands (useful for advanced scripting)
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # ==============================================================================
 # 14. ONBUILD - Trigger Instructions
 # ==============================================================================
-# Instructions that run when this image is used as a base
-# Equivalent Docker CLI: Automatically executed when FROM <this-image>
+# Instructions that run when this image is used as a base image
+# No CLI equivalent: These triggers execute automatically when another Dockerfile uses "FROM <this-image>"
+# Example usage: FROM your-flask-base-image (triggers will execute during that build)
 ONBUILD COPY requirements.txt .
 ONBUILD RUN pip install --no-cache-dir -r requirements.txt
 ONBUILD COPY . .
@@ -199,16 +214,30 @@ ONBUILD COPY . .
 # Option A: Flask development server (commented out)
 # ENTRYPOINT ["python", "-m", "flask"]
 # CMD ["run", "--host=0.0.0.0", "--port=5000"]
+# Runtime: docker run <image> # uses flask run
+# Override: docker run <image> run --debug # overrides CMD only
 
-# Option B: Production WSGI server (Gunicorn)
-# Equivalent Docker CLI: docker run <image> # uses default CMD
-# Override: docker run <image> --workers 2 --bind 0.0.0.0:8000
+# Option B: Production WSGI server (Gunicorn) - ACTIVE CONFIGURATION
+# Runtime: docker run <image> # uses default gunicorn settings
+# Override CMD: docker run <image> --workers 4 --bind 0.0.0.0:8000 src.app:app
+# Override ENTRYPOINT: docker run --entrypoint python <image> -m flask run
 ENTRYPOINT ["gunicorn"]
-CMD ["--bind", "0.0.0.0:5000", "--workers", "2", "--worker-class", "sync", "--worker-connections", "1000", "--max-requests", "1000", "--max-requests-jitter", "100", "--timeout", "30", "--keepalive", "5", "--access-logfile", "-", "--error-logfile", "-", "src.app:app"]
+CMD ["--bind", "0.0.0.0:5000", \
+     "--workers", "2", \
+     "--worker-class", "sync", \
+     "--worker-connections", "1000", \
+     "--max-requests", "1000", \
+     "--max-requests-jitter", "100", \
+     "--timeout", "30", \
+     "--keepalive", "5", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "src.app:app"]
 
-# Option C: Custom entrypoint script (most flexible)
+# Option C: Custom entrypoint script (most flexible) - COMMENTED EXAMPLE
 # COPY --chown=appuser:appgroup entrypoint.sh /entrypoint.sh
 # RUN chmod +x /entrypoint.sh
 # ENTRYPOINT ["/entrypoint.sh"]
 # CMD ["gunicorn", "src.app:app"]
-
+# Runtime: docker run <image> # runs entrypoint.sh with gunicorn
+# Override: docker run <image> flask run # runs entrypoint.sh with flask run

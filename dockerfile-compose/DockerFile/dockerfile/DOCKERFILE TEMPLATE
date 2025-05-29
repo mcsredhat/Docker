@@ -1,51 +1,130 @@
 # ==============================================================================
 # UNIVERSAL DOCKERFILE TEMPLATE (Editable Skeleton)
-# Structure: Instruction Layers Only
+# Structure: Instruction Layers Only + Accurate Docker CLI Equivalents
 # ==============================================================================
 
-# 1. FROM - Base Image
-FROM 
+# 1. FROM - Base Image Selection
+# Build-time: Downloads base image during docker build
+# CLI equivalent: docker pull <image:tag>
+FROM <image:tag>
 
-# 2. LABEL - Image Metadata
-LABEL 
+# 2. SHELL - Shell Configuration (Place early for RUN commands)
+# Build-time: Sets shell for subsequent RUN instructions
+# Runtime equivalent: docker run -it <image> /bin/bash -o pipefail -c "command"
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# 3. ARG - Build-time Variables
-ARG 
+# 3. LABEL - Image Metadata (OCI Standard)
+# Build-time: Adds metadata to image during build
+# Build CLI: docker build --label "key=value" --label "key2=value2" .
+# View labels: docker inspect <image> --format='{{json .Config.Labels}}'
+LABEL <key>=<value> \
+      <key2>=<value2>
 
-# 4. ENV - Runtime Environment Variables
-ENV 
+# 4. ARG - Build-time Variables
+# Build-time: Variables available only during docker build
+# Build CLI: docker build --build-arg VAR1=value1 --build-arg VAR2=value2 .
+ARG <variable>=<default_value>
+ARG <variable2>=<default_value2>
 
-# 5. RUN - System Setup and Dependencies
-RUN 
+# 5. ENV - Runtime Environment Variables
+# Runtime: Variables available in running container
+# Runtime CLI: docker run -e VAR1=value1 -e VAR2=value2 <image>
+ENV <variable>=<value> \
+    <variable2>=<value2>
 
-# 6. WORKDIR - Application Directory
-WORKDIR 
+# 6. RUN - System Setup and Dependencies
+# Build-time: Commands executed during docker build
+# Runtime equivalent: docker exec <container> bash -c "command"
+RUN <command> \
+    && <command2>
 
-# 7. COPY / ADD - Project Files
-COPY 
-# ADD 
+# 7. WORKDIR - Working Directory
+# Build-time: Sets working directory for subsequent instructions
+# Runtime equivalent: docker run -w /path <image>
+WORKDIR <path>
 
-# 8. USER - Non-root User Context
-USER 
+# 8. COPY - Copy Files/Directories
+# Build-time: Copies files from build context to image
+# Runtime equivalent: docker cp <src> <container>:<dest>
+COPY [--chown=<user>:<group>] <src> <dest>
 
-# 9. VOLUME - Data Mount Points
-VOLUME 
+# 9. ADD - Copy Files/URLs/Archives
+# Build-time: Like COPY but with URL/archive extraction support
+# Runtime equivalent: docker cp <src> <container>:<dest> (for local files)
+#                     docker exec <container> wget <url> (for URLs)
+ADD [--chown=<user>:<group>] <src> <dest>
 
-# 10. EXPOSE - Application Ports
-EXPOSE 
+# 10. USER - Security Context
+# Build-time: Sets user for subsequent instructions
+# Runtime equivalent: docker run --user <uid>:<gid> <image>
+#                     docker exec -u <user> <container> <command>
+USER <user>[:<group>]
 
-# 11. HEALTHCHECK - Health Endpoint
-HEALTHCHECK 
+# 11. VOLUME - Data Mount Points
+# Build-time: Declares volume mount points
+# Runtime equivalent: docker run -v <volume>:<path> <image>
+#                     docker run -v <host_path>:<container_path> <image>
+VOLUME ["<path1>", "<path2>"]
 
-# 12. STOPSIGNAL - Shutdown Signal
-STOPSIGNAL 
+# 12. EXPOSE - Port Documentation
+# Build-time: Documents exposed ports (doesn't publish them)
+# Runtime equivalent: docker run -p <host_port>:<container_port> <image>
+EXPOSE <port1> <port2>
 
-# 13. SHELL - Shell Configuration for RUN
-SHELL 
+# 13. HEALTHCHECK - Container Health Monitoring
+# Runtime: Defines health check command for running container
+# Runtime equivalent: docker run \
+#   --health-cmd="<command>" \
+#   --health-interval=<interval> \
+#   --health-timeout=<timeout> \
+#   --health-start-period=<start-period> \
+#   --health-retries=<retries> \
+#   <image>
+HEALTHCHECK --interval=<interval> --timeout=<timeout> --start-period=<period> --retries=<retries> \
+    CMD <health_command>
 
-# 14. ONBUILD - Parent Image Instructions
-ONBUILD 
+# 14. STOPSIGNAL - Shutdown Signal
+# Runtime: Signal sent to container for graceful shutdown
+# Runtime equivalent: docker stop --signal=<signal> <container>
+STOPSIGNAL <signal>
 
-# 15. ENTRYPOINT + CMD - Container Startup
-ENTRYPOINT 
-CMD 
+# 15. ONBUILD - Parent Image Instructions
+# Build-time: Instructions triggered when this image is used as base
+# No CLI equivalent: Automatically executed when "FROM <this-image>" is used
+ONBUILD <INSTRUCTION> <arguments>
+
+# 16. ENTRYPOINT - Fixed Container Command
+# Runtime: Fixed part of container startup command
+# Runtime override: docker run --entrypoint <new_entrypoint> <image> <args>
+ENTRYPOINT ["<executable>", "<param1>"]
+
+# 17. CMD - Default Container Arguments
+# Runtime: Default arguments (easily overrideable)
+# Runtime override: docker run <image> <new_command_and_args>
+CMD ["<param1>", "<param2>"]
+
+# ==============================================================================
+# COMMON PATTERNS AND EXAMPLES
+# ==============================================================================
+
+# Pattern 1: Multi-stage build
+# FROM <base-image> AS <stage-name>
+# COPY --from=<stage-name> <src> <dest>
+
+# Pattern 2: ENTRYPOINT + CMD combination
+# ENTRYPOINT ["executable"]        # Fixed command
+# CMD ["default", "arguments"]     # Default args, easily overridden
+
+# Pattern 3: Build args in ENV
+# ARG BUILD_VAR=default
+# ENV RUNTIME_VAR=${BUILD_VAR}
+
+# Pattern 4: User creation and switching
+# RUN groupadd -g <gid> <group> && useradd -u <uid> -g <group> <user>
+# USER <user>
+
+# Pattern 5: Conditional RUN based on build args
+# RUN if [ "$BUILD_ENV" = "development" ]; then \
+#         pip install -r requirements-dev.txt; \
+#     fi
+
