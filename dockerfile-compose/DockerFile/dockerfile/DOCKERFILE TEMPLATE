@@ -1,0 +1,51 @@
+# ==============================================================================
+# UNIVERSAL DOCKERFILE TEMPLATE (Editable Skeleton)
+# Structure: Instruction Layers Only
+# ==============================================================================
+
+# 1. FROM - Base Image
+FROM 
+
+# 2. LABEL - Image Metadata
+LABEL 
+
+# 3. ARG - Build-time Variables
+ARG 
+
+# 4. ENV - Runtime Environment Variables
+ENV 
+
+# 5. RUN - System Setup and Dependencies
+RUN 
+
+# 6. WORKDIR - Application Directory
+WORKDIR 
+
+# 7. COPY / ADD - Project Files
+COPY 
+# ADD 
+
+# 8. USER - Non-root User Context
+USER 
+
+# 9. VOLUME - Data Mount Points
+VOLUME 
+
+# 10. EXPOSE - Application Ports
+EXPOSE 
+
+# 11. HEALTHCHECK - Health Endpoint
+HEALTHCHECK 
+
+# 12. STOPSIGNAL - Shutdown Signal
+STOPSIGNAL 
+
+# 13. SHELL - Shell Configuration for RUN
+SHELL 
+
+# 14. ONBUILD - Parent Image Instructions
+ONBUILD 
+
+# 15. ENTRYPOINT + CMD - Container Startup
+ENTRYPOINT 
+CMD 
