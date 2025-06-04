@@ -3,11 +3,11 @@ FROM nginx:1.18
 
 # Adding metadata for the image
 LABEL maintainer="farajassulai@gmail.com" \
-      version="1.0" \
-      description="NGINX web app with secure user" \
-      app_name="nginx" \
-      app-version="1.0.0" \
-      app="frontend-webserver"
+    version="1.0" \
+    description="NGINX web app with secure user" \
+    app_name="nginx" \
+    app-version="1.0.0" \
+    app="frontend-webserver"
 
 # Build arguments
 ARG NGINX_VERSION=1.18
@@ -35,11 +35,11 @@ RUN apt-get update && \
     mkdir -p /app/src /app/logs /app/data /app/static && \
     # Create nginx directories that need to be writable by non-root user
     mkdir -p /var/cache/nginx/client_temp \
-             /var/cache/nginx/proxy_temp \
-             /var/cache/nginx/fastcgi_temp \
-             /var/cache/nginx/uwsgi_temp \
-             /var/cache/nginx/scgi_temp \
-             /var/run/nginx && \
+    /var/cache/nginx/proxy_temp \
+    /var/cache/nginx/fastcgi_temp \
+    /var/cache/nginx/uwsgi_temp \
+    /var/cache/nginx/scgi_temp \
+    /var/run/nginx && \
     # Create a custom nginx.conf directory for non-root user
     mkdir -p /app/nginx/conf.d && \
     # Set ownership for nginx cache directories
