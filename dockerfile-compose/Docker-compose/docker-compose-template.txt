@@ -4,7 +4,11 @@ services:
   app:
     # Image specification
     image: <image_name>
-    
+    # build from Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+
     # Container identification
     container_name: <container_name>
     hostname: <hostname>
