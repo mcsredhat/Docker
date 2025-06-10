@@ -73,14 +73,7 @@ services:
       - /tmp:rw,size=50m
       - /var/tmp:rw,size=50m
       - /run:rw,size=10m
-      # Tmpfs mounts - Nginx specific (uncomment if using Nginx)
-      # - /var/log/nginx:size=50m,mode=1777
-      # - /var/cache/nginx:size=100m,mode=1777
-      # - /var/cache/nginx/client_temp:size=10m,mode=1777
-      # - /var/cache/nginx/proxy_temp:size=10m,mode=1777
-      # - /var/cache/nginx/fastcgi_temp:size=10m,mode=1777
-      # - /var/cache/nginx/uwsgi_temp:size=10m,mode=1777
-      # - /var/cache/nginx/scgi_temp:size=10m,mode=1777
+     
     
     # Security configuration
     user: "<uid>:<gid>"
@@ -133,26 +126,3 @@ networks:
       config:
         - subnet: <subnet_range>  # e.g., 172.20.0.0/16
 
-# Example of a secure production configuration
-# Uncomment and modify as needed:
-#
-# services:
-#   secure-app:
-#     image: myapp:latest
-#     container_name: secure-app
-#     user: "1001:1001"
-#     read_only: true
-#     cap_drop:
-#       - ALL
-#     security_opt:
-#       - no-new-privileges:true
-#     deploy:
-#       resources:
-#         limits:
-#           memory: 512m
-#           cpus: '0.5'
-#     restart: unless-stopped
-#     volumes:
-#       - /host/logs:/app/logs
-#     tmpfs:
-#       - /tmp:size=100m
