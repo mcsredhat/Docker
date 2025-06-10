@@ -1,0 +1,102 @@
+#!/bin/bash
+docker run \
+  # container identification 
+  --name <container_name> \
+  --hostname <hostname> \
+  \
+  # Labels
+  --label app=<app_name> \
+  --label environment=<environment> \
+  \
+  # Execution options
+  --detach \
+  --workdir <working_directory> \
+  --entrypoint <entrypoint_script> \
+  \
+  # Environment variables
+  --env BACKEND_HOST=<backend_host> \
+  --env TZ=<timezone> \
+  \
+  # Resource limits
+  --memory=<memory_limit> \
+  --cpus="<cpu_limit>" \
+  --pids-limit=<pids_limit> \
+  --ulimit nofile=65536:65536 \
+  --ulimit nproc=4096:4096 \
+  \
+  # Network configuration
+  --network <network_name> \
+  --network-alias <alias> \
+  --ip <ip_address> \
+  --dns <dns1> \
+  --dns <dns2> \
+  --publish <host_port>:<container_port> \
+  \
+  # Volumes (host:container:mode)
+  --volume <host_path1>:<container_path1>:<mode> \
+  --volume <host_path2>:<container_path2>:<mode> \
+  # Required for read-only containers - writable temp space
+  --volume <host_temp_path>:/tmp \
+  \
+  # Tmpfs mounts - Generic (customize based on your application)
+  --tmpfs /tmp:rw,size=50m \
+  --tmpfs /var/tmp:rw,size=50m \
+  --tmpfs /run:rw,size=10m \
+  \
+  # Tmpfs mounts - Nginx specific (uncomment if using Nginx)
+  # --tmpfs /var/log/nginx:size=50m,mode=1777 \
+  # --tmpfs /var/cache/nginx:size=100m,mode=1777 \
+  # --tmpfs /var/cache/nginx/client_temp:size=10m,mode=1777 \
+  # --tmpfs /var/cache/nginx/proxy_temp:size=10m,mode=1777 \
+  # --tmpfs /var/cache/nginx/fastcgi_temp:size=10m,mode=1777 \
+  # --tmpfs /var/cache/nginx/uwsgi_temp:size=10m,mode=1777 \
+  # --tmpfs /var/cache/nginx/scgi_temp:size=10m,mode=1777 \
+  \
+ 
+  # Security
+   # User security
+  --user <uid>:<gid> \
+  --read-only \
+  --cap-drop=ALL \
+  # Add only the capabilities you actually need:
+  # --cap-add=NET_BIND_SERVICE  # Only if binding to ports < 1024
+  # --cap-add=CHOWN            # Only if app needs to change file ownership
+  # --cap-add=SETGID           # Only if app needs to change group ID
+  # --cap-add=SETUID           # Only if app needs to change user ID
+  --security-opt no-new-privileges:true \
+  # --security-opt apparmor=<profile>  # Uncomment if using AppArmor
+  # --security-opt seccomp=<profile>   # Uncomment if using custom seccomp
+  # --privileged \  # AVOID: Only use if absolutely necessary
+  \
+  # Restart policy
+  --restart unless-stopped \
+  \
+  # Health check
+  --health-cmd="<health_command>" \
+  --health-interval=<interval> \
+  --health-timeout=<timeout> \
+  --health-retries=<retries> \
+  --health-start-period=<start_period> \
+ # --no-healthcheck \  # Uncomment to disable inherited healthcheck
+
+  \
+  # Logging
+  --log-driver=json-file \
+  --log-opt max-size=<log_size> \
+  --log-opt max-file=<log_file_count> \
+  --log-opt compress=true \
+  # Alternative logging drivers:
+  # --log-driver=syslog \
+  # --log-driver=journald \
+  # --log-driver=fluentd --log-opt fluentd-address=<fluentd_host:port> \
+  
+  <image_name>
+
+# Secure production application
+# docker run --name secure-app --detach --read-only --user 1001:1001 \
+#   --cap-drop=ALL --security-opt no-new-privileges:true \
+#   --memory=512m --cpus="0.5" --restart unless-stopped \
+#   --volume /host/logs:/app/logs --tmpfs /tmp:size=100m \
+#   myapp:latest
+
+
