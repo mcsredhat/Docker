@@ -2,7 +2,7 @@ version: "3.8" # Docker Compose file version - determines available features
 
 services: # Define all services/containers for this application
   app: # Main application service name
-    image: image:number # Docker image to use - change to your desired image:tag
+    image: image:tag # Docker image to use - change to your desired image:tag
 
     # Build configuration (uncomment if building from Dockerfile)
     # build:                             # Alternative to 'image' - build from source code
