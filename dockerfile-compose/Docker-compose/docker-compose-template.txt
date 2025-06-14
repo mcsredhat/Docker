@@ -2,153 +2,225 @@ version: '3.8'
 
 services:
   app:
-    # Image specification
-    image: <image_name>
+    image: myapp/image:latest
+    container_name: myapp_container
+    hostname: myapp-host
     
-    # Container identification
-    container_name: <container_name>
-    hostname: <hostname>
-    
-    # Labels for metadata
+    # Labels help organize and identify containers - think of them as tags
+    # These are metadata that don't affect functionality but help with management
     labels:
-      - "app=<app_name>"
-      - "environment=<environment>"
+      - "app=myapp"
+      - "environment=production"
     
-    # Execution options
-    working_dir: <working_directory>
-    entrypoint: <entrypoint_script>
+    # Working directory inside the container - where commands will run from
+    working_dir: /usr/src/app
     
-    # Environment variables
+    # The command that starts your application when container launches
+    entrypoint: ./start.sh
+    
+    # Environment variables - configuration values your app can read
+    # These act like settings that your application uses at runtime
     environment:
-      - BACKEND_HOST=<backend_host>
-      - TZ=<timezone>
+      - BACKEND_HOST=backend.internal
+      - TZ=UTC
     
-    # Resource limits
+    # Resource limits - prevents container from consuming too much system resources
+    # This is crucial for production to maintain system stability
     deploy:
       resources:
         limits:
-          memory: <memory_limit>
-          cpus: '<cpu_limit>'
+          memory: 512M        # Maximum RAM the container can use
+          cpus: '0.50'        # Maximum CPU cores (0.5 = half a core)
         reservations:
-          pids: <pids_limit>
+          memory: 256M        # Added: minimum guaranteed memory
+          cpus: '0.25'        # Added: minimum guaranteed CPU
+        restart_policy:       # Added: how to handle container failures
+          condition: on-failure
+          delay: 5s
+          max_attempts: 3
     
-    # Ulimits configuration
+    # System limits - controls low-level system resources
+    # These prevent resource exhaustion at the OS level
     ulimits:
-      nofile:
+      nofile:               # Number of open files allowed
         soft: 65536
         hard: 65536
-      nproc:
+      nproc:                # Number of processes allowed
         soft: 4096
         hard: 4096
     
-    # Network configuration
+    # Network configuration - how container communicates
+    # Networks isolate containers and control traffic flow
     networks:
-      <network_name>:
+      app_net:
         aliases:
-          - <alias>
-        ipv4_address: <ip_address>
+          - myapp           # Alternative name other containers can use
+        ipv4_address: 172.20.0.10  # Fixed IP within the network
     
-    # DNS configuration
+    # DNS servers - where container resolves domain names
+    # Using public DNS ensures reliable name resolution
     dns:
-      - <dns1>
-      - <dns2>
+      - 8.8.8.8            # Google DNS
+      - 1.1.1.1            # Cloudflare DNS
     
-    # Port mapping
+    # Port mapping - exposes container ports to host system
+    # Format: "host_port:container_port"
     ports:
-      - "<host_port>:<container_port>"
+      - "8080:80"           # Host port 8080 maps to container port 80
     
-    # Volume mounts
+    # Volume mounts - persistent storage and file sharing
+    # These survive container restarts and share data with host
     volumes:
-      - <host_path1>:<container_path1>:<mode>
-      - <host_path2>:<container_path2>:<mode>
-      # Required for read-only containers - writable temp space
-      - <host_temp_path>:/tmp
+      - app_data:/data:rw              # Named volume for application data
+      - app_logs:/logs:rw              # Named volume for log files
+      - app_config:/etc/app:ro         # Config volume (read-only for security)
+      - /tmp/myapp:/tmp                # Host directory mount for temp files
     
-    # Tmpfs mounts - Generic (customize based on your application)
+    # Temporary filesystems - fast, memory-based storage
+    # These are cleared when container stops - good for temp files
     tmpfs:
-      - /tmp:rw,size=50m
-      - /var/tmp:rw,size=50m
-      - /run:rw,size=10m
-      # Tmpfs mounts - Nginx specific (uncomment if using Nginx)
-      # - /var/log/nginx:size=50m,mode=1777
-      # - /var/cache/nginx:size=100m,mode=1777
-      # - /var/cache/nginx/client_temp:size=10m,mode=1777
-      # - /var/cache/nginx/proxy_temp:size=10m,mode=1777
-      # - /var/cache/nginx/fastcgi_temp:size=10m,mode=1777
-      # - /var/cache/nginx/uwsgi_temp:size=10m,mode=1777
-      # - /var/cache/nginx/scgi_temp:size=10m,mode=1777
+      - /tmp:rw,size=50m               # 50MB temp space
+      - /var/tmp:rw,size=50m           # Additional temp space
+      - /run:rw,size=10m               # Runtime files
     
-    # Security configuration
-    user: "<uid>:<gid>"
-    read_only: true
+    # Security settings - follows principle of least privilege
+    user: "1000:1000"                  # Run as non-root user for security
+    read_only: true                    # Makes root filesystem read-only
+    
+    # Remove all capabilities and add back only what's needed
     cap_drop:
-      - ALL
-    # Add only the capabilities you actually need:
-    # cap_add:
-    #   - NET_BIND_SERVICE  # Only if binding to ports < 1024
-    #   - CHOWN            # Only if app needs to change file ownership
-    #   - SETGID           # Only if app needs to change group ID
-    #   - SETUID           # Only if app needs to change user ID
+      - ALL                            # Drop all Linux capabilities
+    # cap_add:                         # Add specific capabilities if needed
+    #   - NET_BIND_SERVICE             # Example: bind to ports < 1024
+    
+    # Additional security options
     security_opt:
-      - no-new-privileges:true
-      # - apparmor=<profile>  # Uncomment if using AppArmor
-      # - seccomp=<profile>   # Uncomment if using custom seccomp
-    # privileged: true  # AVOID: Only use if absolutely necessary
+      - no-new-privileges:true         # Prevents privilege escalation
     
-    # Restart policy
-    restart: unless-stopped
+    # Restart policy - how Docker handles container failures
+    restart: unless-stopped            # Always restart except when manually stopped
     
-    # Health check configuration
+    # Health monitoring - Docker checks if container is working properly
+    # This enables automatic recovery and load balancer integration
     healthcheck:
-      test: ["CMD", "<health_command>"]
-      interval: <interval>
-      timeout: <timeout>
-      retries: <retries>
-      start_period: <start_period>
-      # disable: true  # Uncomment to disable inherited healthcheck
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s                    # Check every 30 seconds
+      timeout: 5s                      # Wait 5 seconds for response
+      retries: 3                       # Try 3 times before marking unhealthy
+      start_period: 30s                # Wait 30s after start before checking
     
-    # Logging configuration
+    # Logging configuration - controls how container logs are handled
+    # Prevents logs from filling up disk space
     logging:
-      driver: json-file
+      driver: json-file                # Standard Docker logging format
       options:
-        max-size: "<log_size>"
-        max-file: "<log_file_count>"
-        compress: "true"
-        # Alternative logging drivers:
-        # driver: syslog
-        # driver: journald
-        # driver: fluentd
-        # fluentd-address: <fluentd_host:port>
+        max-size: "10m"                # Maximum size per log file
+        max-file: "3"                  # Keep 3 log files (rotation)
+        compress: "true"               # Compress old log files
+    
+    # Dependencies - ensures other services start first
+    depends_on:
+      - db                             # Wait for database to be ready
+    
+    # Added secrets and configs usage
+    secrets:
+      - app_secret_key                 # Mount secret file
+      - api_token
+    configs:
+      - source: app_config             # Mount config file
+        target: /etc/app/app.conf
+      - source: nginx_config
+        target: /etc/nginx/nginx.conf
 
-# Network definition
+  # Example database service to demonstrate dependencies
+  db:
+    image: postgres:13
+    container_name: myapp_db
+    environment:
+      POSTGRES_DB: myapp
+      POSTGRES_USER: myapp_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - app_net
+    secrets:
+      - db_password
+    restart: unless-stopped
+
+# Volume definitions - persistent storage that survives container removal
+# Think of these as external hard drives that containers can mount
+volumes:
+  # Application data volume - stores your app's important files
+  app_data:
+    driver: local                      # Stored on local machine
+    driver_opts:
+      type: none                       # Direct bind mount
+      o: bind                          # Bind mount option
+      device: /opt/myapp/data          # Host directory path
+  
+  # Log storage volume - keeps application logs safe
+  app_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/log/myapp
+  
+  # Configuration volume - stores app configuration files
+  app_config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /etc/myapp
+  
+  # Database volume - persists database files
+  db_data:
+    driver: local                      # Uses Docker's default volume storage
+
+# Network definitions - virtual networks for container communication
+# Networks provide isolation and controlled communication between containers
 networks:
-  <network_name>:
-    driver: bridge
+  app_net:
+    driver: bridge                     # Standard Docker network type
+    
+    # IP address management - defines network addressing
     ipam:
-      driver: default
+      driver: default                  # Use Docker's default IPAM
       config:
-        - subnet: <subnet_range>  # e.g., 172.20.0.0/16
+        - subnet: 172.20.0.0/16        # Network range (65,534 possible IPs)
+          gateway: 172.20.0.1          # Router IP for the network
+          ip_range: 172.20.1.0/24      # Added: limit auto-assigned IPs
+    
+    # Driver-specific options - fine-tune network behavior
+    driver_opts:
+      com.docker.network.bridge.name: br-app     # Custom bridge name
+      com.docker.network.driver.mtu: 1500        # Maximum transmission unit
+      com.docker.network.bridge.enable_icc: "true"  # Inter-container communication
 
-# Example of a secure production configuration
-# Uncomment and modify as needed:
-#
-# services:
-#   secure-app:
-#     image: myapp:latest
-#     container_name: secure-app
-#     user: "1001:1001"
-#     read_only: true
-#     cap_drop:
-#       - ALL
-#     security_opt:
-#       - no-new-privileges:true
-#     deploy:
-#       resources:
-#         limits:
-#           memory: 512m
-#           cpus: '0.5'
-#     restart: unless-stopped
-#     volumes:
-#       - /host/logs:/app/logs
-#     tmpfs:
-#       - /tmp:size=100m
+# Secrets management - secure way to handle sensitive data
+# Secrets are encrypted and only accessible to authorized containers
+secrets:
+  app_secret_key:
+    file: ./secrets/app_key.txt        # Read from local file
+    # external: true                   # Alternative: use external secret
+    # name: prod_secret_key           # Reference to external secret name
+  
+  api_token:
+    file: ./secrets/api_token.txt
+  
+  # Added database password secret
+  db_password:
+    file: ./secrets/db_password.txt
+
+# Configuration files - non-sensitive configuration data
+# Configs are similar to secrets but for non-sensitive information
+configs:
+  app_config:
+    file: ./config/app.conf            # Application configuration
+    # external: true                   # Alternative: use external config
+    # name: prod_app_config           # Reference to external config name
+  
+  nginx_config:
+    file: ./config/nginx.conf          # Web server configuration
