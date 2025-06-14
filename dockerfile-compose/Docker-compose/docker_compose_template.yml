@@ -1,0 +1,257 @@
+# =============================================================================
+# UNIVERSAL DOCKER COMPOSE TEMPLATE
+# =============================================================================
+# This template can be used for any Docker image with minimal configuration
+# Simply modify the variables below to match your specific requirements
+
+version: "3.8"
+
+# =============================================================================
+# CONFIGURATION VARIABLES (Modify these for your specific use case)
+# =============================================================================
+# IMAGE_NAME: The Docker image to use (e.g., nginx:latest, node:18-alpine, python:3.11)
+# CONTAINER_NAME: Unique name for your container
+# HOST_PORT: Port on your host machine
+# CONTAINER_PORT: Port inside the container that the application listens on
+# TIMEZONE: Your local timezone (e.g., America/New_York, Europe/London, Asia/Tokyo)
+
+services:
+  app:
+    # =============================================================================
+    # IMAGE CONFIGURATION
+    # =============================================================================
+    image: ${IMAGE_NAME:-nginx:latest}  # Default: nginx:latest
+    
+    # Alternative: Build from Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    #   args:
+    #     - BUILD_ARG_1=${BUILD_VALUE_1}
+    #     - BUILD_ARG_2=${BUILD_VALUE_2}
+
+    # =============================================================================
+    # CONTAINER IDENTIFICATION
+    # =============================================================================
+    container_name: ${CONTAINER_NAME:-my-app}
+    hostname: ${HOSTNAME:-app-host}
+
+    # =============================================================================
+    # METADATA LABELS
+    # =============================================================================
+    labels:
+      - "maintainer=${MAINTAINER:-your-email@example.com}"
+      - "app=${APP_TYPE:-web-app}"
+      - "version=${APP_VERSION:-1.0.0}"
+      - "environment=${ENVIRONMENT:-development}"
+
+    # =============================================================================
+    # ENVIRONMENT VARIABLES
+    # =============================================================================
+    environment:
+      # Application-specific variables
+      APP_NAME: ${APP_NAME:-MyApplication}
+      APP_ENV: ${ENVIRONMENT:-development}
+      APP_PORT: ${CONTAINER_PORT:-80}
+      APP_HOST: ${APP_HOST:-0.0.0.0}
+      
+      # User and permissions
+      USER_ID: ${USER_ID:-1000}
+      USER_NAME: ${USER_NAME:-appuser}
+      GROUP_ID: ${GROUP_ID:-1000}
+      GROUP_NAME: ${GROUP_NAME:-appgroup}
+      
+      # Timezone and locale
+      TZ: ${TIMEZONE:-UTC}
+      LANG: ${LANG:-en_US.UTF-8}
+      
+      # Database connection (if needed)
+      DB_HOST: ${DB_HOST:-database}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-myapp}
+      DB_USER: ${DB_USER:-user}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      
+      # Additional custom environment variables
+      CUSTOM_VAR_1: ${CUSTOM_VAR_1:-default_value_1}
+      CUSTOM_VAR_2: ${CUSTOM_VAR_2:-default_value_2}
+
+    # =============================================================================
+    # NETWORK CONFIGURATION
+    # =============================================================================
+    networks:
+      - app-network
+
+    # Custom DNS servers (optional)
+    dns:
+      - ${DNS_1:-8.8.8.8}
+      - ${DNS_2:-1.1.1.1}
+
+    # =============================================================================
+    # PORT MAPPING
+    # =============================================================================
+    ports:
+      - "${HOST_PORT:-8080}:${CONTAINER_PORT:-80}"
+      # Add additional ports as needed:
+      # - "${ADMIN_PORT:-8081}:${ADMIN_CONTAINER_PORT:-8081}"
+
+    # =============================================================================
+    # VOLUME MOUNTS
+    # =============================================================================
+    volumes:
+      # Application data
+      - ${DATA_DIR:-./data}:/app/data
+      - ${CONFIG_DIR:-./config}:/app/config:ro
+      - ${LOGS_DIR:-./logs}:/app/logs
+      
+      # Additional mounts (uncomment as needed)
+      # - ${BACKUP_DIR:-./backups}:/app/backups
+      # - ${UPLOADS_DIR:-./uploads}:/app/uploads
+      # - ${CACHE_DIR:-./cache}:/app/cache
+
+    # =============================================================================
+    # TEMPORARY FILESYSTEMS (for read-only containers)
+    # =============================================================================
+    tmpfs:
+      - /tmp:rw,size=${TMP_SIZE:-100m},mode=1777
+      - /var/tmp:rw,size=${VAR_TMP_SIZE:-50m},mode=1777
+      # Add application-specific tmpfs mounts:
+      # - /var/cache/app:rw,size=50m,mode=755
+      # - /var/run:rw,size=50m,mode=755
+
+    # =============================================================================
+    # RESOURCE LIMITS
+    # =============================================================================
+    mem_limit: ${MEMORY_LIMIT:-1g}
+    mem_reservation: ${MEMORY_RESERVATION:-512m}
+    cpus: ${CPU_LIMIT:-1.0}
+
+    # =============================================================================
+    # PROCESS LIMITS
+    # =============================================================================
+    ulimits:
+      nfile:
+        soft: ${NFILE_SOFT:-1024}
+        hard: ${NFILE_HARD:-65536}
+      nproc:
+        soft: ${NPROC_SOFT:-1024}
+        hard: ${NPROC_HARD:-4096}
+
+    # =============================================================================
+    # HEALTH CHECK
+    # =============================================================================
+    healthcheck:
+      test: ${HEALTH_CHECK_CMD:-["CMD-SHELL", "curl -f http://localhost:${CONTAINER_PORT:-80}/ || exit 1"]}
+      interval: ${HEALTH_CHECK_INTERVAL:-30s}
+      timeout: ${HEALTH_CHECK_TIMEOUT:-10s}
+      retries: ${HEALTH_CHECK_RETRIES:-3}
+      start_period: ${HEALTH_CHECK_START_PERIOD:-10s}
+
+    # =============================================================================
+    # LOGGING CONFIGURATION
+    # =============================================================================
+    logging:
+      driver: ${LOG_DRIVER:-json-file}
+      options:
+        max-size: ${LOG_MAX_SIZE:-10m}
+        max-file: ${LOG_MAX_FILES:-3}
+        compress: ${LOG_COMPRESS:-"true"}
+
+    # =============================================================================
+    # SECURITY CONFIGURATION
+    # =============================================================================
+    security_opt:
+      - "no-new-privileges:true"
+
+    # Drop all capabilities then add only what's needed
+    cap_drop:
+      - ALL
+    cap_add:
+      - ${CAP_ADD_1:-CHOWN}
+      - ${CAP_ADD_2:-SETGID}
+      - ${CAP_ADD_3:-SETUID}
+      # Add more capabilities as needed:
+      # - NET_BIND_SERVICE  # For binding to privileged ports
+      # - DAC_OVERRIDE      # For overriding file permissions
+
+    # Security hardening options
+    read_only: ${READ_ONLY:-false}
+    
+    # Run as non-root user (recommended)
+    user: "${USER_ID:-1000}:${GROUP_ID:-1000}"
+
+    # =============================================================================
+    # RESTART POLICY
+    # =============================================================================
+    restart: ${RESTART_POLICY:-unless-stopped}
+
+    # =============================================================================
+    # WORKING DIRECTORY
+    # =============================================================================
+    working_dir: ${WORKING_DIR:-/app}
+
+    # =============================================================================
+    # DEPENDENCIES (uncomment if using multiple services)
+    # =============================================================================
+    # depends_on:
+    #   - database
+    #   - redis
+    #   - cache
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: ${NETWORK_SUBNET:-172.20.0.0/16}
+    # Network-level DNS configuration
+    driver_opts:
+      com.docker.network.bridge.name: ${BRIDGE_NAME:-br-app}
+
+# =============================================================================
+# VOLUMES (for persistent data)
+# =============================================================================
+volumes:
+  app-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_VOLUME_PATH:-./volumes/data}
+  
+  app-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${LOGS_VOLUME_PATH:-./volumes/logs}
+
+# =============================================================================
+# USAGE INSTRUCTIONS
+# =============================================================================
+# 1. Create a .env file in the same directory with your custom values:
+#    
+#    IMAGE_NAME=node:18-alpine
+#    CONTAINER_NAME=my-node-app
+#    HOST_PORT=3000
+#    CONTAINER_PORT=3000
+#    MAINTAINER=john.doe@company.com
+#    ENVIRONMENT=production
+#
+# 2. Create required directories:
+#    mkdir -p data config logs
+#
+# 3. Run the application:
+#    docker-compose up -d
+#
+# 4. View logs:
+#    docker-compose logs -f
+#
+# 5. Stop the application:
+#    docker-compose down
+#
+# =============================================================================

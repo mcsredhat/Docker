@@ -1,34 +1,34 @@
-# ==============================================================================
-# UNIVERSAL DOCKERFILE TEMPLATE (Editable Skeleton)
-# Structure: Instruction Layers Only + Accurate Docker CLI Equivalents
-# ==============================================================================
 
-# 1. FROM - Base Image Selection
-# Build-time: Downloads base image during docker build
-# CLI equivalent: docker pull <image:tag>
+#UNIVERSAL DOCKERFILE TEMPLATE (Editable Skeleton)
+#Structure: Instruction Layers Only + Accurate Docker CLI Equivalents
+
+
+#1. FROM - Base Image Selection
+#Build-time: Downloads base image during docker build
+#CLI equivalent: docker pull <image:tag>
 FROM <image:tag>
 
-# 2. SHELL - Shell Configuration (Place early for RUN commands)
-# Build-time: Sets shell for subsequent RUN instructions
-# Runtime equivalent: docker run -it <image> /bin/bash -o pipefail -c "command"
+#2. SHELL - Shell Configuration (Place early for RUN commands)
+#Build-time: Sets shell for subsequent RUN instructions
+#Runtime equivalent: docker run -it <image> /bin/bash -o pipefail -c "command"
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# 3. LABEL - Image Metadata (OCI Standard)
-# Build-time: Adds metadata to image during build
-# Build CLI: docker build --label "key=value" --label "key2=value2" .
-# View labels: docker inspect <image> --format='{{json .Config.Labels}}'
+#3. LABEL - Image Metadata (OCI Standard)
+#Build-time: Adds metadata to image during build
+#Build CLI: docker build --label "key=value" --label "key2=value2" .
+#View labels: docker inspect <image> --format='{{json .Config.Labels}}'
 LABEL <key>=<value> \
       <key2>=<value2>
 
-# 4. ARG - Build-time Variables
-# Build-time: Variables available only during docker build
-# Build CLI: docker build --build-arg VAR1=value1 --build-arg VAR2=value2 .
+#4. ARG - Build-time Variables
+#Build-time: Variables available only during docker build
+#Build CLI: docker build --build-arg VAR1=value1 --build-arg VAR2=value2 .
 ARG <variable>=<default_value>
 ARG <variable2>=<default_value2>
 
-# 5. ENV - Runtime Environment Variables
-# Runtime: Variables available in running container
-# Runtime CLI: docker run -e VAR1=value1 -e VAR2=value2 <image>
+#5. ENV - Runtime Environment Variables
+#Runtime: Variables available in running container
+#Runtime CLI: docker run -e VAR1=value1 -e VAR2=value2 <image>
 ENV <variable>=<value> \
     <variable2>=<value2>
 

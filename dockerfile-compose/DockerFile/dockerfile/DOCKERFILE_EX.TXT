@@ -1,0 +1,80 @@
+# Docker images (docker pull node:18-slim)
+FROM node:18-slim 
+
+# Add metadata images 
+LABEL maintainer="farajassulai@gmail.com" \
+      environment="production" \
+      description="Create webserver using node and secure by using non-root user" \
+      created_date="2025-6-12" \
+      APP_name="node_java" \
+      APP_VER="1.0.0" 
+
+# Add the arguments variables 
+ARG NODEVER=18 
+ARG USER_ID=1010
+ARG USER_NAME=nodeuser
+ARG GROUP_ID=1010
+ARG GROUP_NAME=nodegrp
+ARG APP_PORT=3000
+ARG HOST=localhost
+ARG APP_DIR=/app
+ARG MOUNT1=/app/data 
+ARG MOUNT2=/app/logs 
+ARG LOCAL_URL=http://localhost:3000/health 
+ARG SHELL=/bin/bash 
+
+# The environment variables for the image 
+ENV APP_version=$NODEVER \
+      port=${APP_PORT} \
+      USER_ID=1010 \
+      USER_NAME=nodeuser \
+      GROUP_ID=1010 \
+      GROUP_NAME=nodegrp \
+      APP_PORT=3000 \
+      HOST=localhost \
+      APP_DIR=/app \
+      MOUNT1=/app/data \
+      MOUNT2=/app/logs \
+      LOCAL_URL=http://localhost:3000/health 
+
+# Create working directory 
+WORKDIR ${APP_DIR} 
+
+# Install updates & packages, create user and group, create directories, set permissions
+RUN apt-get update && \
+      apt-get install -y curl && \
+      mkdir -p ${APP_DIR} ${MOUNT1} ${MOUNT2} /app/tmp /app/var /tmp/run && \
+      groupadd -g ${GROUP_ID} ${GROUP_NAME} && \
+      useradd -u ${USER_ID} -m -d ${APP_DIR} -s ${SHELL} -g ${GROUP_NAME} ${USER_NAME} && \
+      chown -R ${USER_NAME}:${GROUP_NAME} ${APP_DIR} ${MOUNT1} ${MOUNT2} && \
+      chmod 755 ${APP_DIR} ${MOUNT1} ${MOUNT2} && \
+      apt-get clean && \
+      rm -rf /var/lib/apt/lists/*
+
+# Copy the project files 
+COPY . ${APP_DIR} 
+
+# Add the mount point volumes
+VOLUME ["${MOUNT1}", "${MOUNT2}"]
+
+# Identify the shell to be used in image 
+SHELL ["${SHELL}", "-o", "pipefail", "-c"]
+
+# Port to be used internally in the image 
+EXPOSE ${APP_PORT} 
+
+# Switch to non-root user
+USER ${USER_ID}
+
+# Signal stop for the image 
+STOPSIGNAL SIGTERM 
+
+# Healthcheck for the image 
+HEALTHCHECK --interval=30s \
+      --timeout=30s \
+      --start-period=5s \
+      --retries=3 \
+      CMD curl -f ${LOCAL_URL} || exit 1
+
+# Run the command 
+CMD ["node", "server.js"]
