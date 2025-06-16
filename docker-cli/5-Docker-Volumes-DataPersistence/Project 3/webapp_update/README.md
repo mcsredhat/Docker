@@ -58,7 +58,7 @@ nginx-docker-project/
 mkdir nginx-docker-project && cd nginx-docker-project
 
 # Create configuration directory
-mkdir -p conf
+mkdir -p conf logs data 
 ```
 
 ### Step 2: Create Configuration Files
