@@ -2,7 +2,7 @@ version: "3.8" # Docker Compose file version - determines available features
 
 services: # Define all services/containers for this application
   app: # Main application service name
-    image: image:number # Docker image to use - change to your desired image:tag
+    image: image:tag # Docker image to use - change to your desired image:tag
 
     # Build configuration (uncomment if building from Dockerfile)
     # build:                             # Alternative to 'image' - build from source code
@@ -36,7 +36,7 @@ services: # Define all services/containers for this application
       USER_ID: "USERID" # User ID for application user
       USER_NAME: USERNAME # Username for application user
       GROUP_ID: "GROUPID" # Group ID for application group
-      GROUP_NAME: GROUPNAME # Group name for application group
+      GROUP_NAME: "GROUPNAME" # Group name for application group
       APP_PORT: "number_of_port" # Port number the application listens on
       HOST: localhost # Host configuration for the application
       LOCAL_URL: http://localhost # Local URL for application access
