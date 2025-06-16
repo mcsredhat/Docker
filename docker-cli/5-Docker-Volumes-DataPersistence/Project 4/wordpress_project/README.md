@@ -33,7 +33,7 @@ docker compose up -d
 ### 2. Complete WordPress Setup
 Open your web browser and navigate to:
 ```
-http://localhost:8080
+http://localhost:8088
 ```
 Follow the WordPress setup wizard to configure your site.
 
