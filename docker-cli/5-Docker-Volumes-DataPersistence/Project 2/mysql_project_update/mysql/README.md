@@ -33,39 +33,48 @@ mysql_project/
 ### 1. Deploy MySQL Container
 ```
 docker compose up -d
-
+```
 ### 2. Display All Databases
 ```
 docker exec my-mysql mysql -uroot -prootpass -e "SHOW DATABASES;"
 ```
-Display Tables in a Specific Database
+
+### Display Tables in a Specific Database
 ```
 docker exec my-mysql mysql -uroot -prootpass -D mydb -e "SHOW TABLES;"
 ```
-Display Tables with More Details
+### Display Tables with More Details
 ```
 docker exec my-mysql mysql -uroot -prootpass -D mydb -e "SHOW TABLE STATUS;"
 ```
-Display Table Structure/Schema
+### Display Table Structure/Schema
 ```
 docker exec my-mysql mysql -uroot -prootpass -D mydb -e "DESCRIBE tablename;
 ```
-Display All Tables from All Databases
+### Display All Tables from All Databases
 ```
 docker exec my-mysql mysql -uroot -prootpass -e "SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SC
 ```
 
-Interactive MySQL Session (Alternative Approach)
-Instead of running individual commands, you can also start an interactive MySQL session:
+### Interactive MySQL Session (Alternative Approach)
+## Instead of running individual commands, you can also start an interactive MySQL session:
 ```
 docker exec -it my-mysql mysql -uroot -prootpass
 ```
-Then run SQL commands directly:
+### Then run SQL commands directly:
 ```
 sqlSHOW DATABASES;
+```
+```
 USE mydb;
+```
+```
 SHOW TABLES;
+```
+```
 DESCRIBE tablename;
+```
+```
 EXIT;
 ```
 
@@ -84,16 +93,13 @@ Stop and restart the container, then check if data persists:
 ```
 docker compose down
 ```
-
 ```
 docker compose up -d
 ```
-
 ```
 docker exec mysql-demo mysql -uroot -prootpass -e "SELECT * FROM demo.test;"
 
 ```
-
 ## Configuration Files
 ### Environment Variables (.env)
 The `.env` file contains environment variables used by MySQL:
