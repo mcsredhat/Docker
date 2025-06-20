@@ -80,13 +80,13 @@ EXIT;
 
 ### 3. Add Test Data
 ```
-docker exec -it mysql-demo mysql -uroot -prootpass -e "CREATE DATABASE demo;"
+docker exec -it my-mysql mysql -uroot -prootpass -e "CREATE DATABASE demo;"
 ```
 ```
-docker exec -it mysql-demo mysql -uroot -prootpass -D demo -e "CREATE TABLE test (id INT, value VARCHAR(20));"
+docker exec -it my-mysql mysql -uroot -prootpass -D demo -e "CREATE TABLE test (id INT, value VARCHAR(20));"
 ```
 ```
-docker exec -it mysql-demo mysql -uroot -prootpass -D demo -e "SHOW TABLES;"
+docker exec -it my-mysql mysql -uroot -prootpass -D demo -e "SHOW TABLES;"
 ```
 ### 3. Verify Data Persistence
 Stop and restart the container, then check if data persists:
@@ -97,7 +97,7 @@ docker compose down
 docker compose up -d
 ```
 ```
-docker exec mysql-demo mysql -uroot -prootpass -e "SELECT * FROM demo.test;"
+docker exec my-mysql mysql -uroot -prootpass -e "SELECT * FROM demo.test;"
 
 ```
 ## Configuration Files
@@ -122,7 +122,7 @@ mysql -h127.0.0.1 -P3306 -uroot -prootpass mydb
 
 ### From Inside the Container
 ```
-docker exec -it mysql-demo mysql -uroot -prootpass mydb
+docker exec -it my-mysql mysql -uroot -prootpass mydb
 ```
 
 ## Data Persistence
@@ -136,12 +136,12 @@ This project demonstrates data persistence through Docker volumes:
 
 ### Executing SQL Commands
 ```
-docker exec -it mysql-demo mysql -uroot -prootpass -e "SQL_COMMAND_HERE"
+docker exec -it my-mysql mysql -uroot -prootpass -e "SQL_COMMAND_HERE"
 ```
 
 ### Backing Up the Database
 ```
-docker exec mysql-demo mysqldump -uroot -prootpass mydb > backup.sql
+docker exec my-mysql mysqldump -uroot -prootpass mydb > backup.sql
 ```
 
 ### Restoring from Backup
