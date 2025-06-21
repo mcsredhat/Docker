@@ -17,6 +17,8 @@ ARG MYSQL_ROOT_PASSWORD=rootpass
 ARG MYSQL_DATABASE=mydb
 ARG MYSQL_PASSWORD=wppassword
 ARG MYSQL_USER=sqluser
+#ARG CP_SQL_CFG=mysql/config
+
 
 # Set runtime environment variables from ARGs
 ENV SQLVER=${SQLVER} \
@@ -34,6 +36,7 @@ ENV SQLVER=${SQLVER} \
     MYSQL_DATABASE=${MYSQL_DATABASE} \
     MYSQL_PASSWORD=${MYSQL_PASSWORD} \
     MYSQL_USER=${MYSQL_USER} \
+    CP_SQL_CFG=${CP_SQL_CFG} \
     TZ=Europe/Paris
 
 # Labels
@@ -54,8 +57,8 @@ RUN groupadd -g ${GROUP_ID} ${GROUP_NAME} && \
     chmod 755 ${APP_DIR} ${MOUNT1} ${MOUNT2}
 
 # Copy MySQL configuration files
-COPY ./config/my.cnf /etc/mysql/conf.d/custom.cnf
-COPY ./config/init.sql /docker-entrypoint-initdb.d/
+COPY mysql/config/my.cnf /etc/mysql/conf.d/custom.cnf
+COPY mysql/config/init.sql /docker-entrypoint-initdb.d/
 
 # Set proper permissions for config files
 RUN chown ${USER_NAME}:${GROUP_NAME} /etc/mysql/conf.d/custom.cnf && \
@@ -64,7 +67,7 @@ RUN chown ${USER_NAME}:${GROUP_NAME} /etc/mysql/conf.d/custom.cnf && \
     chmod 644 /docker-entrypoint-initdb.d/init.sql
 
 # Create volume mount points
-VOLUME ["${MOUNT1}", "${MOUNT2}"]
+VOLUME ["${MOUNT1}", "${MOUNT2}", "/var/lib/mysql"]
 
 # Set shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]

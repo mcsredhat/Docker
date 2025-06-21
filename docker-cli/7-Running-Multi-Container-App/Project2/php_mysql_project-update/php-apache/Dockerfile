@@ -15,9 +15,9 @@ ARG hostname=php-apache-host
 ARG PHP_ENV=production
 ARG HEALTH_URL="curl -f http://localhost:8080"
 ARG VAR_RUN_PATH=/var/run/apache2
-ARG CP_PHP_SRC=src
-ARG CP_PHP_CFG=php-config
-ARG CP_APACHE_CFG=apache-config
+ARG CP_PHP_SRC=/php-apache/src
+ARG CP_PHP_CFG=/php-apache/php-config
+ARG CP_APACHE_CFG=/php-apache/apache-config
 ARG VAR_LOGS=/var/log/apache2
 
 # Create ENV variables
@@ -61,12 +61,12 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy configuration files
-COPY ./${CP_APACHE_CFG}/ports.conf /etc/apache2/ports.conf
-COPY ./${CP_APACHE_CFG}/000-default.conf /etc/apache2/sites-available/000-default.conf
-COPY ./${CP_PHP_CFG}/php.ini /usr/local/etc/php/php.ini
+COPY ${CP_APACHE_CFG}/ports.conf /etc/apache2/ports.conf
+COPY ${CP_APACHE_CFG}/000-default.conf /etc/apache2/sites-available/000-default.conf
+COPY ${CP_PHP_CFG}/php.ini /usr/local/etc/php/php.ini
 
 # Copy application source files
-COPY ./${CP_PHP_SRC}/index.php ${DIR_PATH}/
+COPY ${CP_PHP_SRC}/index.php ${DIR_PATH}/
 
 # Set proper ownership and permissions
 RUN chown -R ${USER_NAME}:${GROUP_NAME} ${DIR_PATH} ${MOUNT1_PATH} ${MOUNT2_PATH} && \
