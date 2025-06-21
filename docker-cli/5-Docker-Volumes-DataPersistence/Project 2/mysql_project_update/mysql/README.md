@@ -33,67 +33,73 @@ mysql_project/
 ### 1. Deploy MySQL Container
 ```
 docker compose up -d
-
+```
 ### 2. Display All Databases
 ```
 docker exec my-mysql mysql -uroot -prootpass -e "SHOW DATABASES;"
 ```
-Display Tables in a Specific Database
+
+### Display Tables in a Specific Database
 ```
 docker exec my-mysql mysql -uroot -prootpass -D mydb -e "SHOW TABLES;"
 ```
-Display Tables with More Details
+### Display Tables with More Details
 ```
 docker exec my-mysql mysql -uroot -prootpass -D mydb -e "SHOW TABLE STATUS;"
 ```
-Display Table Structure/Schema
+### Display Table Structure/Schema
 ```
 docker exec my-mysql mysql -uroot -prootpass -D mydb -e "DESCRIBE tablename;
 ```
-Display All Tables from All Databases
+### Display All Tables from All Databases
 ```
 docker exec my-mysql mysql -uroot -prootpass -e "SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SC
 ```
 
-Interactive MySQL Session (Alternative Approach)
-Instead of running individual commands, you can also start an interactive MySQL session:
+### Interactive MySQL Session (Alternative Approach)
+## Instead of running individual commands, you can also start an interactive MySQL session:
 ```
 docker exec -it my-mysql mysql -uroot -prootpass
 ```
-Then run SQL commands directly:
+### Then run SQL commands directly:
 ```
 sqlSHOW DATABASES;
+```
+```
 USE mydb;
+```
+```
 SHOW TABLES;
+```
+```
 DESCRIBE tablename;
+```
+```
 EXIT;
 ```
 
 ### 3. Add Test Data
 ```
-docker exec -it mysql-demo mysql -uroot -prootpass -e "CREATE DATABASE demo;"
+docker exec -it my-mysql mysql -uroot -prootpass -e "CREATE DATABASE demo;"
 ```
 ```
-docker exec -it mysql-demo mysql -uroot -prootpass -D demo -e "CREATE TABLE test (id INT, value VARCHAR(20));"
+docker exec -it my-mysql mysql -uroot -prootpass -D demo -e "CREATE TABLE test (id INT, value VARCHAR(20));"
 ```
 ```
-docker exec -it mysql-demo mysql -uroot -prootpass -D demo -e "SHOW TABLES;"
+docker exec -it my-mysql mysql -uroot -prootpass -D demo -e "SHOW TABLES;"
 ```
 ### 3. Verify Data Persistence
 Stop and restart the container, then check if data persists:
 ```
 docker compose down
 ```
-
 ```
 docker compose up -d
 ```
+```
+docker exec my-mysql mysql -uroot -prootpass -e "SELECT * FROM demo.test;"
 
 ```
-docker exec mysql-demo mysql -uroot -prootpass -e "SELECT * FROM demo.test;"
-
-```
-
 ## Configuration Files
 ### Environment Variables (.env)
 The `.env` file contains environment variables used by MySQL:
@@ -116,7 +122,7 @@ mysql -h127.0.0.1 -P3306 -uroot -prootpass mydb
 
 ### From Inside the Container
 ```
-docker exec -it mysql-demo mysql -uroot -prootpass mydb
+docker exec -it my-mysql mysql -uroot -prootpass mydb
 ```
 
 ## Data Persistence
@@ -130,12 +136,12 @@ This project demonstrates data persistence through Docker volumes:
 
 ### Executing SQL Commands
 ```
-docker exec -it mysql-demo mysql -uroot -prootpass -e "SQL_COMMAND_HERE"
+docker exec -it my-mysql mysql -uroot -prootpass -e "SQL_COMMAND_HERE"
 ```
 
 ### Backing Up the Database
 ```
-docker exec mysql-demo mysqldump -uroot -prootpass mydb > backup.sql
+docker exec my-mysql mysqldump -uroot -prootpass mydb > backup.sql
 ```
 
 ### Restoring from Backup
