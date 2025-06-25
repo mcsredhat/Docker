@@ -1,0 +1,296 @@
+This comprehensive multistage Dockerfile example includes all the components you requested in the correct order:
+Stage 1: Build Stage
+
+FROM - Starts with a "image:tag" base image suitable for building
+ARG - Uses ARG for configurable directory structure and build parameters
+ENV - Sets ENV variables for the build environment
+WORKDIR - Establishes WORKDIR for consistent file operations
+COPY - Copies configuration files first (for better layer caching)
+RUN - Installs build dependencies and creates necessary directories,add user,group,chown,chmod 
+RUN --mount=Mount cache for package managers (requires BuildKit)
+RUN - Installs all dependencies including dev dependencies for testing
+RUN - Performs code linting to ensure quality
+RUN - Runs tests to verify functionality
+RUN - Builds the application with compilation/bundling
+test -d = Verifies that build artifacts exist
+RUN - Conducts security audit for vulnerabilities
+command -v trivy= Container vulnerability scanning 
+RUN - Cleans up unnecessary files to reduce image size
+
+Stage 2: Production Stage
+
+FROM - Uses a clean base image for minimal attack surface
+LABEL - Includes comprehensive LABEL metadata for image documentation
+ARG- Defines ARG for production-specific configuration
+ARG - Sets production-appropriate ENV variables
+WORKDIR - Sets WORKDIR for the production environment
+RUN - Installs only runtime dependencies and creates secure user setup,chown,chmod(dir&file)
+COPY --from=builder= Copies validated files from the build stage with proper ownership
+RUN - Creates an enhanced entrypoint script with graceful shutdown handling
+VOLUME - Defines VOLUME for data persistence
+SHELL - Sets SHELL for consistent command execution
+EXPOSE - Exposes the application port
+USER - Switches to non-root USER for security
+STOPSIGNAL - Configures STOPSIGNAL for proper container lifecycle management
+HEALTHCHECK - Implements comprehensive HEALTHCHECK for monitoring
+CMD - Uses CMD to execute the enhanced entrypoint
+
+# =============================================================================
+# UNIVERSAL MULTI-STAGE DOCKERFILE TEMPLATE
+# =============================================================================
+# This template can be adapted for any application type (Node.js, Python, Go, Java, etc.)
+# Simply modify the base images, build commands, and dependencies as needed
+# =============================================================================
+
+# ================================
+# Stage 1: Build Stage
+# ================================
+FROM <BASE_BUILD_IMAGE>:<TAG> AS builder
+
+# ---------- Build Arguments ----------
+ARG APP_NAME="myapp"
+ARG APP_VERSION="1.0.0"
+ARG BUILD_ENV="development"
+ARG APP_DIR="/app"
+ARG BUILD_DIR="/build"
+ARG USER_ID=1001
+ARG USER_NAME="builduser"
+ARG GROUP_ID=1001
+ARG GROUP_NAME="buildgroup"
+ARG TIMEZONE="UTC"
+ARG BUILD_DEPS=""
+ARG RUNTIME_DEPS=""
+
+# ---------- Build Environment Variables ----------
+ENV APP_NAME=${APP_NAME} \
+    APP_VERSION=${APP_VERSION} \
+    BUILD_ENV=${BUILD_ENV} \
+    APP_DIR=${APP_DIR} \
+    BUILD_DIR=${BUILD_DIR} \
+    USER_ID=${USER_ID} \
+    USER_NAME=${USER_NAME} \
+    GROUP_ID=${GROUP_ID} \
+    GROUP_NAME=${GROUP_NAME} \
+    TZ=${TIMEZONE} \
+    DEBIAN_FRONTEND=noninteractive \
+    PATH="${APP_DIR}/bin:${PATH}"
+
+# ---------- Set Working Directory ----------
+WORKDIR ${APP_DIR}
+
+# ---------- Install System Dependencies ----------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    wget \
+    git \
+    build-essential \
+    ${BUILD_DEPS} \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# ---------- Create Build User & Group ----------
+RUN groupadd -g ${GROUP_ID} ${GROUP_NAME} && \
+    useradd -u ${USER_ID} -g ${GROUP_NAME} -m -s /bin/bash ${USER_NAME}
+
+# ---------- Copy Dependency Files First (for better caching) ----------
+# Adapt these COPY commands based on your application type:
+# For Node.js: COPY package*.json yarn.lock* ./
+# For Python: COPY requirements*.txt setup.py pyproject.toml ./
+# For Go: COPY go.mod go.sum ./
+# For Java/Maven: COPY pom.xml ./
+# For Java/Gradle: COPY build.gradle gradle.properties ./
+COPY <DEPENDENCY_FILES> ./
+
+# ---------- Install Dependencies with Caching ----------
+# Adapt this RUN command based on your application type:
+# For Node.js: RUN --mount=type=cache,target=/root/.npm npm ci --only=production
+# For Python: RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt
+# For Go: RUN --mount=type=cache,target=/go/pkg/mod go mod download
+# For Java/Maven: RUN --mount=type=cache,target=/root/.m2 mvn dependency:go-offline
+RUN --mount=type=cache,target=<CACHE_DIR> \
+    <INSTALL_DEPENDENCIES_COMMAND>
+
+# ---------- Copy Source Code ----------
+COPY . .
+
+# ---------- Set Ownership ----------
+RUN chown -R ${USER_NAME}:${GROUP_NAME} ${APP_DIR}
+
+# ---------- Switch to Build User ----------
+USER ${USER_NAME}
+
+# ---------- Code Quality Checks ----------
+# Adapt these commands based on your application type:
+# For Node.js: RUN npm run lint && npm run test
+# For Python: RUN flake8 . && pytest
+# For Go: RUN go vet ./... && go test ./...
+# For Java: RUN mvn test
+RUN <LINT_COMMAND> && <TEST_COMMAND>
+
+# ---------- Build Application ----------
+# Adapt this command based on your application type:
+# For Node.js: RUN npm run build
+# For Python: RUN python setup.py build
+# For Go: RUN go build -o bin/app ./cmd/app
+# For Java/Maven: RUN mvn clean package -DskipTests
+RUN <BUILD_COMMAND>
+
+# ---------- Verify Build Artifacts ----------
+RUN test -d <BUILD_OUTPUT_DIR> || test -f <BUILD_OUTPUT_FILE>
+
+# ---------- Security Audit ----------
+# Adapt this command based on your application type:
+# For Node.js: RUN npm audit --audit-level=high
+# For Python: RUN safety check
+# For Go: RUN go list -json -m all | nancy sleuth
+RUN <SECURITY_AUDIT_COMMAND> || echo "Security audit skipped"
+
+# ---------- Container Vulnerability Scanning (Optional) ----------
+# Uncomment when using build tools like BuildKit with Trivy installed
+# RUN command -v trivy >/dev/null 2>&1 && trivy fs --exit-code 1 --severity HIGH,CRITICAL . || echo "Trivy not available"
+
+# ---------- Build Stage Cleanup ----------
+RUN <CLEANUP_BUILD_DEPENDENCIES> && \
+    rm -rf /tmp/* /var/tmp/* \
+    && <CLEAR_PACKAGE_CACHE>
+
+# ================================
+# Stage 2: Production Stage
+# ================================
+FROM <BASE_RUNTIME_IMAGE>:<TAG> AS production
+
+# ---------- Metadata Labels ----------
+LABEL maintainer="<MAINTAINER_EMAIL>" \
+      org.label-schema.name="${APP_NAME}" \
+      org.label-schema.description="<APP_DESCRIPTION>" \
+      org.label-schema.version="${APP_VERSION}" \
+      org.label-schema.build-date="<BUILD_DATE>" \
+      org.label-schema.vcs-url="<VCS_URL>" \
+      org.label-schema.schema-version="1.0" \
+      stage="production"
+
+# ---------- Production Arguments ----------
+ARG APP_NAME="myapp"
+ARG APP_VERSION="1.0.0"
+ARG APP_ENV="production"
+ARG APP_DIR="/app"
+ARG DATA_DIR="/app/data"
+ARG LOGS_DIR="/app/logs"
+ARG CONFIG_DIR="/app/config"
+ARG USER_ID=1010
+ARG USER_NAME="appuser"
+ARG GROUP_ID=1010
+ARG GROUP_NAME="appgroup"
+ARG APP_PORT=8080
+ARG HEALTH_CHECK_PATH="/health"
+ARG TIMEZONE="UTC"
+ARG SHELL_PATH="/bin/bash"
+ARG RUNTIME_DEPS=""
+
+# ---------- Production Environment Variables ----------
+ENV APP_NAME=${APP_NAME} \
+    APP_VERSION=${APP_VERSION} \
+    APP_ENV=${APP_ENV} \
+    APP_DIR=${APP_DIR} \
+    DATA_DIR=${DATA_DIR} \
+    LOGS_DIR=${LOGS_DIR} \
+    CONFIG_DIR=${CONFIG_DIR} \
+    USER_ID=${USER_ID} \
+    USER_NAME=${USER_NAME} \
+    GROUP_ID=${GROUP_ID} \
+    GROUP_NAME=${GROUP_NAME} \
+    APP_PORT=${APP_PORT} \
+    HEALTH_CHECK_PATH=${HEALTH_CHECK_PATH} \
+    TZ=${TIMEZONE} \
+    SHELL_PATH=${SHELL_PATH} \
+    DEBIAN_FRONTEND=noninteractive \
+    PATH="${APP_DIR}/bin:${PATH}"
+
+# ---------- Set Working Directory ----------
+WORKDIR ${APP_DIR}
+
+# ---------- Install Runtime Dependencies ----------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    wget \
+    dumb-init \
+    tini \
+    ${RUNTIME_DEPS} \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# ---------- Create Production User & Group ----------
+RUN groupadd -g ${GROUP_ID} ${GROUP_NAME} && \
+    useradd -u ${USER_ID} -g ${GROUP_NAME} -m -s ${SHELL_PATH} ${USER_NAME}
+
+# ---------- Create Application Directories ----------
+RUN mkdir -p ${APP_DIR} ${DATA_DIR} ${LOGS_DIR} ${CONFIG_DIR} && \
+    chown -R ${USER_NAME}:${GROUP_NAME} ${APP_DIR} ${DATA_DIR} ${LOGS_DIR} ${CONFIG_DIR}
+
+# ---------- Copy Build Artifacts ----------
+# Adapt these COPY commands based on your application type:
+# For Node.js: COPY --from=builder ${APP_DIR}/dist ${APP_DIR}/dist
+# For Python: COPY --from=builder ${APP_DIR}/dist ${APP_DIR}/
+# For Go: COPY --from=builder ${APP_DIR}/bin/app ${APP_DIR}/bin/app
+# For Java: COPY --from=builder ${APP_DIR}/target/*.jar ${APP_DIR}/app.jar
+COPY --from=builder --chown=${USER_NAME}:${GROUP_NAME} <BUILD_ARTIFACTS_SOURCE> <BUILD_ARTIFACTS_DEST>
+
+# ---------- Copy Production Dependencies (if needed) ----------
+# For applications that need runtime dependencies from build stage
+# COPY --from=builder --chown=${USER_NAME}:${GROUP_NAME} <RUNTIME_DEPS_SOURCE> <RUNTIME_DEPS_DEST>
+
+# ---------- Copy Configuration Files ----------
+COPY --chown=${USER_NAME}:${GROUP_NAME} config/ ${CONFIG_DIR}/
+
+# ---------- Copy and Setup Entrypoint Script ----------
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh && \
+    chown ${USER_NAME}:${GROUP_NAME} /usr/local/bin/entrypoint.sh
+
+# ---------- Setup Volumes ----------
+VOLUME ["${DATA_DIR}", "${LOGS_DIR}"]
+
+# ---------- Set Default Shell ----------
+SHELL ["${SHELL_PATH}", "-c"]
+
+# ---------- Expose Application Port ----------
+EXPOSE ${APP_PORT}
+
+# ---------- Switch to Non-root User ----------
+USER ${USER_ID}
+
+# ---------- Configure Stop Signal ----------
+STOPSIGNAL SIGTERM
+
+# ---------- Health Check ----------
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:${APP_PORT}${HEALTH_CHECK_PATH} || exit 1
+
+# ---------- Set Entrypoint and Default Command ----------
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["/usr/local/bin/entrypoint.sh"]
+
+# =============================================================================
+# CUSTOMIZATION NOTES:
+# =============================================================================
+# 1. Replace <BASE_BUILD_IMAGE> and <BASE_RUNTIME_IMAGE> with appropriate images:
+#    - Node.js: node:18-alpine / node:18-alpine
+#    - Python: python:3.11-slim / python:3.11-slim
+#    - Go: golang:1.21-alpine / alpine:3.18
+#    - Java: openjdk:17-jdk-slim / openjdk:17-jre-slim
+#
+# 2. Replace placeholder commands with language-specific commands:
+#    - <DEPENDENCY_FILES>: package*.json, requirements.txt, go.mod, pom.xml, etc.
+#    - <INSTALL_DEPENDENCIES_COMMAND>: npm ci, pip install, go mod download, mvn dependency:go-offline
+#    - <BUILD_COMMAND>: npm run build, python setup.py build, go build, mvn package
+#    - <LINT_COMMAND>: npm run lint, flake8, go vet, checkstyle
+#    - <TEST_COMMAND>: npm test, pytest, go test, mvn test
+#
+# 3. Adjust paths and directories based on your application structure
+#
+# 4. Update metadata labels with your project information
+#
+# 5. Configure environment variables specific to your application
+# =============================================================================

@@ -1,0 +1,5 @@
+
+# From your local machine, create SSH tunnel
+ssh -L 8888:localhost:8888 cloud_user@13.59.133.179
+
+# Then access: http://localhost:8888 in your browser

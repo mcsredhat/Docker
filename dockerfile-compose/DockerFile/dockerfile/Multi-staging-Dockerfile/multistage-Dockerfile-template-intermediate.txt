@@ -1,0 +1,555 @@
+# Multi-Stage Dockerfile: Layer-to-Stage Mapping
+
+## 🏗️ **STAGE 1: Base Stage**
+*Common foundation and system setup*
+
+| Layer | Instruction | Purpose |
+|-------|-------------|---------|
+| 1 | `FROM node:18-alpine AS base` | Starts with a base image suitable for building |
+| 2 | `ARG APP_NAME="myapp"...` | Uses ARG for configurable directory structure and build parameters |
+| 3 | `ENV APP_NAME=${APP_NAME}...` | Sets ENV variables for the build environment |
+| 4 | `WORKDIR ${APP_DIR}` | Establishes WORKDIR for consistent file operations |
+| 5 | `RUN apk add --no-cache...` | Installs build dependencies and system packages |
+| 6 | `RUN addgroup -g ${GROUP_ID}...` | Creates user and group for security |
+| 7 | `RUN mkdir -p ${APP_DIR}...` | Creates necessary directories with proper ownership |
+
+---
+
+## 📦 **STAGE 2: Dependencies Stage**
+*Install and cache dependencies*
+
+| Layer | Instruction | Purpose |
+|-------|-------------|---------|
+| 8 | `FROM base AS dependencies` | Inherits from base stage |
+| 9 | `COPY package*.json yarn.lock* ./` | Copies configuration files first (for better layer caching) |
+| 10 | `RUN chown -R ${USER_NAME}...` | Sets proper file ownership |
+| 11 | `USER ${USER_NAME}` | Switches to non-root user for dependency installation |
+| 12 | `RUN --mount=type=cache...npm ci --only=production` | Mount cache for package managers (requires BuildKit) - Production deps |
+| 13 | `RUN --mount=type=cache...npm ci --include=dev` | Installs all dependencies including dev dependencies for testing |
+
+---
+
+## 🔨 **STAGE 3: Build Stage**
+*Code quality checks, testing, and building*
+
+| Layer | Instruction | Purpose |
+|-------|-------------|---------|
+| 14 | `FROM dependencies AS build` | Inherits from dependencies stage |
+| 15 | `COPY --chown=${USER_NAME}:${GROUP_NAME} . .` | Copies source code with proper ownership |
+| 16 | `RUN npm run lint` | Performs code linting to ensure quality |
+| 17 | `RUN npm test` | Runs tests to verify functionality |
+| 18 | `RUN npm run build` | Builds the application with compilation/bundling |
+| 19 | `RUN test -d dist/` | Verifies that build artifacts exist |
+| 20 | `RUN npm audit --audit-level=high...` | Conducts security audit for vulnerabilities |
+| 21 | `RUN rm -rf node_modules/.cache...` | Cleans up unnecessary files to reduce image size |
+
+---
+
+## 🚀 **STAGE 4: Production Stage**
+*Clean runtime environment*
+
+| Layer | Instruction | Purpose |
+|-------|-------------|---------|
+| 22 | `FROM node:18-alpine AS production` | Uses a clean base image for minimal attack surface |
+| 23 | `ARG APP_NAME="myapp"...` | Defines ARG for production-specific configuration |
+| 24 | `ENV APP_NAME=${APP_NAME}...` | Sets production-appropriate ENV variables |
+| 25 | `WORKDIR ${APP_DIR}` | Sets WORKDIR for the production environment |
+| 26 | `RUN apk add --no-cache...` | Installs only runtime dependencies |
+| 27 | `RUN addgroup -g ${GROUP_ID}...` | Creates secure user setup for production |
+| 28 | `RUN mkdir -p ${APP_DIR}...` | Creates directories with proper permissions (chown, chmod) |
+| 29 | `COPY --from=build --chown=...` | Copies validated files from the build stage with proper ownership |
+| 30 | `COPY --from=dependencies --chown=...` | Copies production dependencies from dependencies stage |
+| 31 | `COPY --chown=${USER_NAME}...` | Copies configuration files |
+| 32 | `RUN cat > /usr/local/bin/entrypoint.sh...` | Creates an enhanced entrypoint script with graceful shutdown handling |
+| 33 | `RUN chmod +x /usr/local/bin/entrypoint.sh...` | Sets executable permissions on entrypoint script |
+| 34 | `VOLUME ["${DATA_DIR}", "${LOGS_DIR}"]` | Defines VOLUME for data persistence |
+| 35 | `SHELL ["${SHELL_PATH}", "-c"]` | Sets SHELL for consistent command execution |
+| 36 | `EXPOSE ${APP_PORT}` | Exposes the application port |
+| 37 | `USER ${USER_ID}` | Switches to non-root USER for security |
+| 38 | `STOPSIGNAL SIGTERM` | Configures STOPSIGNAL for proper container lifecycle management |
+| 39 | `HEALTHCHECK --interval=30s...` | Implements comprehensive HEALTHCHECK for monitoring |
+| 40 | `ENTRYPOINT ["/usr/bin/dumb-init", "--"]` | Sets entrypoint with proper init system |
+| 41 | `CMD ["/usr/local/bin/entrypoint.sh"]` | Uses CMD to execute the enhanced entrypoint |
+
+---
+
+## 📊 **Stage Summary**
+
+| Stage | Layers | Primary Focus | Key Benefits |
+|-------|--------|---------------|--------------|
+| **Base** | 1-7 | Foundation Setup | Reusable base, system dependencies |
+| **Dependencies** | 8-13 | Package Management | Cached dependencies, optimized installs |
+| **Build** | 14-21 | Quality & Compilation | Testing, linting, security audits |
+| **Production** | 22-41 | Runtime Environment | Minimal footprint, security, monitoring |
+
+## 🎯 **Advanced Features Included**
+
+- **Container Vulnerability Scanning**: `command -v trivy` integration capability
+- **BuildKit Cache Mounts**: `RUN --mount=type=cache` for faster builds
+- **Multi-user Security**: Separate build and runtime users
+- **Graceful Shutdown**: Signal handling in entrypoint script
+- **Health Monitoring**: Comprehensive healthcheck configuration
+- **Data Persistence**: Volume mounting for stateful applications
+
+# =============================================================================
+# UNIVERSAL 4-STAGE MULTI-STAGE DOCKERFILE TEMPLATE
+# =============================================================================
+# This template provides maximum optimization with 4 distinct stages:
+# 1. Base Stage: Common foundation and system setup
+# 2. Dependencies Stage: Install and cache dependencies
+# 3. Build Stage: Code quality checks, testing, and building
+# 4. Production Stage: Clean runtime environment
+# =============================================================================
+
+# ================================
+# Stage 1: Base Stage
+# ================================
+FROM <BASE_BUILD_IMAGE>:<TAG> AS base
+
+# ---------- Base Arguments ----------
+ARG APP_NAME="myapp"
+ARG APP_VERSION="1.0.0"
+ARG BUILD_ENV="development"
+ARG APP_DIR="/app"
+ARG USER_ID=1001
+ARG USER_NAME="builduser"
+ARG GROUP_ID=1001
+ARG GROUP_NAME="buildgroup"
+ARG TIMEZONE="UTC"
+ARG BUILD_DEPS=""
+
+# ---------- Base Environment Variables ----------
+ENV APP_NAME=${APP_NAME} \
+    APP_VERSION=${APP_VERSION} \
+    BUILD_ENV=${BUILD_ENV} \
+    APP_DIR=${APP_DIR} \
+    USER_ID=${USER_ID} \
+    USER_NAME=${USER_NAME} \
+    GROUP_ID=${GROUP_ID} \
+    GROUP_NAME=${GROUP_NAME} \
+    TZ=${TIMEZONE} \
+    DEBIAN_FRONTEND=noninteractive \
+    PATH="${APP_DIR}/bin:${PATH}"
+
+# ---------- Set Working Directory ----------
+WORKDIR ${APP_DIR}
+
+# ---------- Install System Dependencies ----------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    wget \
+    git \
+    build-essential \
+    ${BUILD_DEPS} \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# ---------- Create Build User & Group ----------
+RUN groupadd -g ${GROUP_ID} ${GROUP_NAME} && \
+    useradd -u ${USER_ID} -g ${GROUP_NAME} -m -s /bin/bash ${USER_NAME}
+
+# ---------- Create Application Directories ----------
+RUN mkdir -p ${APP_DIR} && \
+    chown -R ${USER_NAME}:${GROUP_NAME} ${APP_DIR}
+
+# ================================
+# Stage 2: Dependencies Stage
+# ================================
+FROM base AS dependencies
+
+# ---------- Copy Dependency Files First (for better caching) ----------
+# Adapt these COPY commands based on your application type:
+# For Node.js: COPY package*.json yarn.lock* ./
+# For Python: COPY requirements*.txt setup.py pyproject.toml ./
+# For Go: COPY go.mod go.sum ./
+# For Java/Maven: COPY pom.xml ./
+# For Java/Gradle: COPY build.gradle gradle.properties ./
+COPY <DEPENDENCY_FILES> ./
+
+# ---------- Set Ownership of Dependency Files ----------
+RUN chown -R ${USER_NAME}:${GROUP_NAME} ${APP_DIR}
+
+# ---------- Switch to Build User ----------
+USER ${USER_NAME}
+
+# ---------- Install Dependencies with Caching ----------
+# Adapt this RUN command based on your application type:
+# For Node.js: RUN --mount=type=cache,target=/home/${USER_NAME}/.npm npm ci
+# For Python: RUN --mount=type=cache,target=/home/${USER_NAME}/.cache/pip pip install -r requirements.txt
+# For Go: RUN --mount=type=cache,target=/go/pkg/mod go mod download
+# For Java/Maven: RUN --mount=type=cache,target=/home/${USER_NAME}/.m2 mvn dependency:go-offline
+RUN --mount=type=cache,target=<CACHE_DIR> \
+    <INSTALL_DEPENDENCIES_COMMAND>
+
+# ---------- Install Development Dependencies ----------
+# For testing and linting tools
+# For Node.js: RUN --mount=type=cache,target=/home/${USER_NAME}/.npm npm ci --include=dev
+# For Python: RUN --mount=type=cache,target=/home/${USER_NAME}/.cache/pip pip install -r requirements-dev.txt
+RUN --mount=type=cache,target=<CACHE_DIR> \
+    <INSTALL_DEV_DEPENDENCIES_COMMAND>
+
+# ================================
+# Stage 3: Build Stage
+# ================================
+FROM dependencies AS build
+
+# ---------- Copy Source Code ----------
+COPY --chown=${USER_NAME}:${GROUP_NAME} . .
+
+# ---------- Code Quality Checks ----------
+# Adapt these commands based on your application type:
+# For Node.js: RUN npm run lint
+# For Python: RUN flake8 . && pylint src/
+# For Go: RUN go vet ./... && golangci-lint run
+# For Java: RUN mvn checkstyle:check
+RUN <LINT_COMMAND>
+
+# ---------- Run Tests ----------
+# Adapt this command based on your application type:
+# For Node.js: RUN npm test
+# For Python: RUN pytest --cov=src tests/
+# For Go: RUN go test -v ./...
+# For Java: RUN mvn test
+RUN <TEST_COMMAND>
+
+# ---------- Build Application ----------
+# Adapt this command based on your application type:
+# For Node.js: RUN npm run build
+# For Python: RUN python setup.py build
+# For Go: RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/app ./cmd/app
+# For Java/Maven: RUN mvn clean package -DskipTests
+RUN <BUILD_COMMAND>
+
+# ---------- Verify Build Artifacts ----------
+RUN test -d <BUILD_OUTPUT_DIR> || test -f <BUILD_OUTPUT_FILE>
+
+# ---------- Security Audit ----------
+# Adapt this command based on your application type:
+# For Node.js: RUN npm audit --audit-level=high
+# For Python: RUN safety check
+# For Go: RUN go list -json -m all | nancy sleuth
+# For Java: RUN mvn org.owasp:dependency-check-maven:check
+RUN <SECURITY_AUDIT_COMMAND> || echo "Security audit completed with warnings"
+
+# ---------- Container Vulnerability Scanning (Optional) ----------
+# Uncomment when using build tools like BuildKit with Trivy installed
+# RUN command -v trivy >/dev/null 2>&1 && trivy fs --exit-code 1 --severity HIGH,CRITICAL . || echo "Trivy not available"
+
+# ---------- Build Stage Cleanup ----------
+RUN <CLEANUP_BUILD_DEPENDENCIES> && \
+    rm -rf /tmp/* /var/tmp/* && \
+    <CLEAR_PACKAGE_CACHE>
+
+# ================================
+# Stage 4: Production Stage
+# ================================
+FROM <BASE_RUNTIME_IMAGE>:<TAG> AS production
+
+# ---------- Metadata Labels ----------
+LABEL maintainer="<MAINTAINER_EMAIL>" \
+      org.label-schema.name="${APP_NAME}" \
+      org.label-schema.description="<APP_DESCRIPTION>" \
+      org.label-schema.version="${APP_VERSION}" \
+      org.label-schema.build-date="<BUILD_DATE>" \
+      org.label-schema.vcs-url="<VCS_URL>" \
+      org.label-schema.schema-version="1.0" \
+      stage="production"
+
+# ---------- Production Arguments ----------
+ARG APP_NAME="myapp"
+ARG APP_VERSION="1.0.0"
+ARG APP_ENV="production"
+ARG APP_DIR="/app"
+ARG DATA_DIR="/app/data"
+ARG LOGS_DIR="/app/logs"
+ARG CONFIG_DIR="/app/config"
+ARG USER_ID=1010
+ARG USER_NAME="appuser"
+ARG GROUP_ID=1010
+ARG GROUP_NAME="appgroup"
+ARG APP_PORT=8080
+ARG HEALTH_CHECK_PATH="/health"
+ARG TIMEZONE="UTC"
+ARG SHELL_PATH="/bin/bash"
+ARG RUNTIME_DEPS=""
+
+# ---------- Production Environment Variables ----------
+ENV APP_NAME=${APP_NAME} \
+    APP_VERSION=${APP_VERSION} \
+    APP_ENV=${APP_ENV} \
+    APP_DIR=${APP_DIR} \
+    DATA_DIR=${DATA_DIR} \
+    LOGS_DIR=${LOGS_DIR} \
+    CONFIG_DIR=${CONFIG_DIR} \
+    USER_ID=${USER_ID} \
+    USER_NAME=${USER_NAME} \
+    GROUP_ID=${GROUP_ID} \
+    GROUP_NAME=${GROUP_NAME} \
+    APP_PORT=${APP_PORT} \
+    HEALTH_CHECK_PATH=${HEALTH_CHECK_PATH} \
+    TZ=${TIMEZONE} \
+    SHELL_PATH=${SHELL_PATH} \
+    DEBIAN_FRONTEND=noninteractive \
+    PATH="${APP_DIR}/bin:${PATH}"
+
+# ---------- Set Working Directory ----------
+WORKDIR ${APP_DIR}
+
+# ---------- Install Runtime Dependencies ----------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    wget \
+    dumb-init \
+    tini \
+    ${RUNTIME_DEPS} \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# ---------- Create Production User & Group ----------
+RUN groupadd -g ${GROUP_ID} ${GROUP_NAME} && \
+    useradd -u ${USER_ID} -g ${GROUP_NAME} -m -s ${SHELL_PATH} ${USER_NAME}
+
+# ---------- Create Application Directories ----------
+RUN mkdir -p ${APP_DIR} ${DATA_DIR} ${LOGS_DIR} ${CONFIG_DIR} && \
+    chown -R ${USER_NAME}:${GROUP_NAME} ${APP_DIR} ${DATA_DIR} ${LOGS_DIR} ${CONFIG_DIR} && \
+    chmod 755 ${APP_DIR} ${DATA_DIR} ${LOGS_DIR} ${CONFIG_DIR}
+
+# ---------- Copy Build Artifacts from Build Stage ----------
+# Adapt these COPY commands based on your application type:
+# For Node.js: COPY --from=build --chown=${USER_NAME}:${GROUP_NAME} ${APP_DIR}/dist ${APP_DIR}/dist
+# For Python: COPY --from=build --chown=${USER_NAME}:${GROUP_NAME} ${APP_DIR}/dist ${APP_DIR}/
+# For Go: COPY --from=build --chown=${USER_NAME}:${GROUP_NAME} ${APP_DIR}/bin/app ${APP_DIR}/bin/app
+# For Java: COPY --from=build --chown=${USER_NAME}:${GROUP_NAME} ${APP_DIR}/target/*.jar ${APP_DIR}/app.jar
+COPY --from=build --chown=${USER_NAME}:${GROUP_NAME} <BUILD_ARTIFACTS_SOURCE> <BUILD_ARTIFACTS_DEST>
+
+# ---------- Copy Runtime Dependencies from Dependencies Stage (if needed) ----------
+# For applications that need runtime dependencies from build stage
+# COPY --from=dependencies --chown=${USER_NAME}:${GROUP_NAME} <RUNTIME_DEPS_SOURCE> <RUNTIME_DEPS_DEST>
+
+# ---------- Copy Configuration Files ----------
+COPY --chown=${USER_NAME}:${GROUP_NAME} config/ ${CONFIG_DIR}/
+
+# ---------- Create Enhanced Entrypoint Script ----------
+RUN cat > /usr/local/bin/entrypoint.sh << 'EOF'
+#!/bin/bash
+set -e
+
+# Function to handle graceful shutdown
+graceful_shutdown() {
+    echo "Received shutdown signal, gracefully shutting down..."
+    # Add your graceful shutdown logic here
+    # For example, send SIGTERM to your application process
+    if [ ! -z "$APP_PID" ]; then
+        kill -TERM "$APP_PID"
+        wait "$APP_PID"
+    fi
+    exit 0
+}
+
+# Trap signals for graceful shutdown
+trap graceful_shutdown SIGTERM SIGINT
+
+# Pre-flight checks
+echo "Starting ${APP_NAME} v${APP_VERSION} in ${APP_ENV} mode..."
+
+# Verify required directories exist
+for dir in "${DATA_DIR}" "${LOGS_DIR}" "${CONFIG_DIR}"; do
+    if [ ! -d "$dir" ]; then
+        echo "Error: Required directory $dir does not exist"
+        exit 1
+    fi
+done
+
+# Health check before starting
+if [ -f "${APP_DIR}/bin/healthcheck" ]; then
+    echo "Running pre-flight health check..."
+    "${APP_DIR}/bin/healthcheck" || {
+        echo "Pre-flight health check failed"
+        exit 1
+    }
+fi
+
+# Start the application
+echo "Starting application..."
+# Adapt this command based on your application type:
+# For Node.js: exec node dist/index.js &
+# For Python: exec python -m src.main &
+# For Go: exec ./bin/app &
+# For Java: exec java -jar app.jar &
+exec <START_APPLICATION_COMMAND> &
+
+APP_PID=$!
+echo "Application started with PID: $APP_PID"
+
+# Wait for the application process
+wait "$APP_PID"
+EOF
+
+# ---------- Set Entrypoint Script Permissions ----------
+RUN chmod +x /usr/local/bin/entrypoint.sh && \
+    chown ${USER_NAME}:${GROUP_NAME} /usr/local/bin/entrypoint.sh
+
+# ---------- Setup Volumes ----------
+VOLUME ["${DATA_DIR}", "${LOGS_DIR}"]
+
+# ---------- Set Default Shell ----------
+SHELL ["${SHELL_PATH}", "-c"]
+
+# ---------- Expose Application Port ----------
+EXPOSE ${APP_PORT}
+
+# ---------- Switch to Non-root User ----------
+USER ${USER_ID}
+
+# ---------- Configure Stop Signal ----------
+STOPSIGNAL SIGTERM
+
+# ---------- Health Check ----------
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:${APP_PORT}${HEALTH_CHECK_PATH} || exit 1
+
+# ---------- Set Entrypoint and Default Command ----------
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["/usr/local/bin/entrypoint.sh"]
+
+# =============================================================================
+# CUSTOMIZATION GUIDE FOR DIFFERENT TECHNOLOGIES:
+# =============================================================================
+
+# ----------------------------------------
+# NODE.JS APPLICATION EXAMPLE:
+# ----------------------------------------
+# Replace placeholders with:
+# <BASE_BUILD_IMAGE>: node:18-alpine
+# <BASE_RUNTIME_IMAGE>: node:18-alpine
+# <DEPENDENCY_FILES>: package*.json yarn.lock*
+# <INSTALL_DEPENDENCIES_COMMAND>: npm ci --only=production
+# <INSTALL_DEV_DEPENDENCIES_COMMAND>: npm ci --include=dev
+# <LINT_COMMAND>: npm run lint
+# <TEST_COMMAND>: npm test
+# <BUILD_COMMAND>: npm run build
+# <BUILD_OUTPUT_DIR>: dist/
+# <SECURITY_AUDIT_COMMAND>: npm audit --audit-level=high
+# <BUILD_ARTIFACTS_SOURCE>: ${APP_DIR}/dist
+# <BUILD_ARTIFACTS_DEST>: ${APP_DIR}/dist
+# <START_APPLICATION_COMMAND>: node dist/index.js
+
+# ----------------------------------------
+# PYTHON APPLICATION EXAMPLE:
+# ----------------------------------------
+# Replace placeholders with:
+# <BASE_BUILD_IMAGE>: python:3.11-slim
+# <BASE_RUNTIME_IMAGE>: python:3.11-slim
+# <DEPENDENCY_FILES>: requirements*.txt setup.py pyproject.toml
+# <INSTALL_DEPENDENCIES_COMMAND>: pip install --no-cache-dir -r requirements.txt
+# <INSTALL_DEV_DEPENDENCIES_COMMAND>: pip install --no-cache-dir -r requirements-dev.txt
+# <LINT_COMMAND>: flake8 . && pylint src/
+# <TEST_COMMAND>: pytest --cov=src tests/
+# <BUILD_COMMAND>: python setup.py build
+# <BUILD_OUTPUT_DIR>: build/
+# <SECURITY_AUDIT_COMMAND>: safety check
+# <BUILD_ARTIFACTS_SOURCE>: ${APP_DIR}/build
+# <BUILD_ARTIFACTS_DEST>: ${APP_DIR}/
+# <START_APPLICATION_COMMAND>: python -m src.main
+
+
+I'll create a comprehensive 4-stage Dockerfile based on your template. This will separate the concerns even further for better optimization and maintainability.I've created a comprehensive 4-stage Dockerfile template that separates concerns into distinct stages:
+
+## **4 Stages Breakdown:**
+
+### **Stage 1: Base**
+- Sets up the common foundation
+- Installs system dependencies
+- Creates users and groups
+- Establishes basic directory structure
+
+### **Stage 2: Dependencies**
+- Inherits from base stage
+- Focuses solely on dependency installation
+- Uses caching for both production and development dependencies
+- Optimizes layer caching for faster rebuilds
+
+### **Stage 3: Build**
+- Inherits from dependencies stage
+- Performs code quality checks (linting)
+- Runs comprehensive tests
+- Builds the application
+- Conducts security audits
+- Verifies build artifacts
+
+### **Stage 4: Production**
+- Uses a clean base image for minimal attack surface
+- Copies only necessary artifacts from previous stages
+- Sets up production environment
+- Implements security best practices
+- Includes comprehensive health checks and graceful shutdown
+
+## **Key Benefits of 4-Stage Approach:**
+
+1. **Better Caching**: Dependencies are cached separately from source code changes
+2. **Faster Iterations**: Code changes don't invalidate dependency layers
+3. **Security**: Each stage is isolated and production stage is minimal
+4. **Flexibility**: Easy to customize for different technologies
+5. **Maintainability**: Clear separation of concerns
+
+## **Technology Examples Included:**
+
+The template includes complete customization examples for:
+- **Node.js** applications
+- **Python** applications  
+- **Go** applications
+- **Java/Maven** applications
+
+# ----------------------------------------
+# GO APPLICATION EXAMPLE:
+# ----------------------------------------
+# Replace placeholders with:
+# <BASE_BUILD_IMAGE>: golang:1.21-alpine
+# <BASE_RUNTIME_IMAGE>: alpine:3.18
+# <DEPENDENCY_FILES>: go.mod go.sum
+# <INSTALL_DEPENDENCIES_COMMAND>: go mod download
+# <INSTALL_DEV_DEPENDENCIES_COMMAND>: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+# <LINT_COMMAND>: go vet ./... && golangci-lint run
+# <TEST_COMMAND>: go test -v ./...
+# <BUILD_COMMAND>: CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/app ./cmd/app
+# <BUILD_OUTPUT_FILE>: bin/app
+# <SECURITY_AUDIT_COMMAND>: go list -json -m all | nancy sleuth
+# <BUILD_ARTIFACTS_SOURCE>: ${APP_DIR}/bin/app
+# <BUILD_ARTIFACTS_DEST>: ${APP_DIR}/bin/app
+# <START_APPLICATION_COMMAND>: ./bin/app
+
+# ----------------------------------------
+# JAVA APPLICATION EXAMPLE:
+# ----------------------------------------
+# Replace placeholders with:
+# <BASE_BUILD_IMAGE>: openjdk:17-jdk-slim
+# <BASE_RUNTIME_IMAGE>: openjdk:17-jre-slim
+# <DEPENDENCY_FILES>: pom.xml
+# <INSTALL_DEPENDENCIES_COMMAND>: mvn dependency:go-offline
+# <INSTALL_DEV_DEPENDENCIES_COMMAND>: mvn dependency:resolve -Dclassifier=sources
+# <LINT_COMMAND>: mvn checkstyle:check
+# <TEST_COMMAND>: mvn test
+# <BUILD_COMMAND>: mvn clean package -DskipTests
+# <BUILD_OUTPUT_DIR>: target/
+# <SECURITY_AUDIT_COMMAND>: mvn org.owasp:dependency-check-maven:check
+# <BUILD_ARTIFACTS_SOURCE>: ${APP_DIR}/target/*.jar
+# <BUILD_ARTIFACTS_DEST>: ${APP_DIR}/app.jar
+# <START_APPLICATION_COMMAND>: java -jar app.jar
+
+# =============================================================================
+# STAGE BENEFITS:
+# =============================================================================
+# Stage 1 (Base): Common foundation, reduces duplication
+# Stage 2 (Dependencies): Isolated dependency installation, better caching
+# Stage 3 (Build): Code quality, testing, and compilation
+# Stage 4 (Production): Clean, minimal runtime environment
+# 
+# This 4-stage approach provides:
+# - Maximum layer caching efficiency
+# - Clear separation of concerns
+# - Optimal build times for iterative development
+# - Minimal production image size
+# - Enhanced security through multi-stage isolation
+# =============================================================================
