@@ -1,0 +1,131 @@
+
+# Build the multi-stage image 
+docker build --target production -t vueapp:prod . 
+
+# Run the Container
+docker run -d --name vue-app-pro -p 8080:80 --entrypoint /usr/local/bin/vue-entrypoint-nonroot.sh vueapp:prod
+
+# check the Run the Container
+docker ps -a | grep vue-app-pro
+
+#### Check Application Logs
+
+docker ps logs vue-app-pro
+
+#### Access the Application
+
+curl http//:localhost:8080
+
+### Debug Build Issues
+
+## 1. First, check if the container is running:
+
+docker ps -a | grep vue-app-pro
+```
+
+## 2. Check if the file exists in the container:
+
+docker exec vue-app-pro ls -la /usr/local/bin/vue-entrypoint-nonroot.sh
+```
+
+If the container isn't running or the exec fails, let's start fresh:
+
+## 3. Remove and recreate with a temporary entrypoint:
+
+docker stop vue-app-pro
+docker rm vue-app-pro
+
+# Start with tail to keep it running
+docker run -d --name vue-app-pro --entrypoint tail vueapp:prod -f /dev/null
+```
+
+## 4. Copy the fixed file:
+
+docker cp vue-entrypoint-fixed.sh vue-app-pro:/usr/local/bin/vue-entrypoint-nonroot.sh
+```
+
+## 5. Verify it's there and test it:
+
+docker exec vue-app-pro ls -la /usr/local/bin/vue-entrypoint-nonroot.sh
+docker exec vue-app-pro /usr/local/bin/vue-entrypoint-nonroot.sh
+```
+
+## 6. If that works, commit the container to a new image:
+
+docker commit vue-app-pro vueapp:prod-fixed
+```
+
+## 7. Then run the new image normally:
+
+docker stop vue-app-pro
+docker rm vue-app-pro
+docker run -d --name vue-app-pro vueapp:prod-fixed
+```
+
+Good! The container is running. Now let's check if the file exists and test it:
+
+## 1. Check if the file exists:
+
+docker exec vue-app-pro ls -la /usr/local/bin/vue-entrypoint-nonroot.sh
+```
+
+## 2. Test the script:
+
+docker exec vue-app-pro /usr/local/bin/vue-entrypoint-nonroot.sh
+```
+
+## 3. If both work, let's run the container with the proper entrypoint:
+
+# Stop the current container
+docker stop vue-app-pro
+docker rm vue-app-pro
+
+# Run with the actual entrypoint
+docker run -d --name vue-app-pro vueapp:prod-fixed
+
+# Check if it's running properly
+docker ps
+docker logs vue-app-pro
+```
+
+The `vueapp:prod-fixed` image should now have the corrected entrypoint script with proper Unix line endings.
+
+If you want to make this permanent, you could also update your original image:
+
+docker tag vueapp:prod-fixed vueapp:prod
+```
+
+Let's first verify the file exists and works in the running container.
+
+
+
+The container is still running with `tail -f /dev/null` instead of your entrypoint script. This means when you ran the container, it's still using the tail command as the entrypoint.
+
+Let's fix this:
+
+## 1. Stop and remove the current container:
+
+docker stop vue-app-pro
+docker rm vue-app-pro
+```
+
+## 2. Run the container with the correct entrypoint explicitly:
+
+docker run -d --name vue-app-pro -p 8080:80 --entrypoint /usr/local/bin/vue-entrypoint-nonroot.sh vueapp:prod-fixed
+
+## 3. Check if it's running properly now:
+
+docker ps
+docker logs vue-app-pro
+```
+
+## 4. Check what processes are running:
+
+docker exec vue-app-pro ps aux
+```
+
+## 5. Test the connection:
+
+curl http://localhost:8080
+```
+
