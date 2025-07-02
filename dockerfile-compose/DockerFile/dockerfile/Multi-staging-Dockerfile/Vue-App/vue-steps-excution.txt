@@ -1,3 +1,33 @@
+## 📁 Project Structure Setup
+
+First, ensure your project has the following structure:
+
+```
+your-vue-project/
+├── Dockerfile
+├── nginx.conf
+├── vue-entrypoint-nonroot.sh
+├── package.json
+├── package-lock.json (or yarn.lock/pnpm-lock.yaml)
+├── .dockerignore 
+├── src/
+│   ├── main.js (or main.ts)
+│   ├── App.vue
+│   └── components/
+     └── FeatureCard.vue
+    └── utils/
+     └── index.js
+├── public/
+│   ├── index.html
+    ├── vite.
+    ├── vue.
+│   └── favicon.ico
+├── vite.config.js (or vue.config.js)
+└── dist/ (created during build)
+```
+
+
+
 # Docker Vue.js Application Deployment Guide
 
 ## Phase 1: Initial Build and Deployment
@@ -5,7 +35,8 @@
 ### Step 1: Build the Production Image
 
 # Build the multi-stage Docker image targeting the production stage
-docker build --target production -t vueapp:prod .
+docker build --target production -t vuetapp:prod .
+
 ```
 **Purpose**: Creates an optimized production build of your Vue.js application using multi-stage Docker build.
 
