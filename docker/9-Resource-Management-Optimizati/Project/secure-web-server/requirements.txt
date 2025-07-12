@@ -1,3 +1,0 @@
-# Application dependencies
-gunicorn==20.1.0
-# No external dependencies needed for built-in Python server
