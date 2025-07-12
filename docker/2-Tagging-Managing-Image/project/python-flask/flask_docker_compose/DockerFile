@@ -3,10 +3,10 @@ FROM python:3.9-slim
 
 # Create metadata image (docker build --label maintainer="farajassulai@gmail.com" .)
 LABEL maintainer="farajassulai@gmail.com" \
-      version="1.0" \
-      description="create python flask application with secure user" \
-      app-name="flask/python" \
-      app-version="1.0.0"
+    version="1.0" \
+    description="create python flask application with secure user" \
+    app-name="flask/python" \
+    app-version="1.0.0"
 
 # Create variables environment ARG (docker build --build-arg USERID=1000 .)
 ARG PYTHON_VERSION=3.9

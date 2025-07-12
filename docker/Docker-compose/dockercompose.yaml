@@ -1,0 +1,233 @@
+services:
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress_container
+    hostname: wordpress-hostname
+
+    labels:
+      - "maintainer=farajassulai@gmail.com"
+      - "app=wordpress_project"
+      - "type=wordpress"
+
+    environment:
+      WORDPRESS_VER: wordpress
+      USER_ID: 1111
+      USER_NAME: wordpressuser
+      GROUP_ID: 1111
+      GROUP_NAME: wordpressgrp
+      APP_ENV: production
+      BASH_SHELL: /bin/bash
+      APP_DIR: /var/www/html
+      MOUNT1: /var/www/html/data
+      MOUNT2: /var/www/html/logs
+      BACKEND_HOST: db
+      TZ: GMT+2
+      LOCAL_URL: http://localhost:8080
+      dir_tmp: /tmp
+      dir_run: /run
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wpuser
+      WORDPRESS_DB_PASSWORD: wppassword
+
+    networks:
+      - wordpress-project-network
+
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+
+    ports:
+      - "8088:80"
+
+    volumes:
+      - wordpress_logs:/var/www/html/logs:rw
+      - wordpress_data:/var/www/html:rw
+
+    depends_on:
+      - db
+
+    # Resource limits - using deploy syntax for modern compose
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+        reservations:
+          memory: 256M
+
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 4096
+      nproc:
+        soft: 512
+        hard: 1024
+
+    # Healthcheck for WordPress
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+        compress: "true"
+
+    security_opt:
+      - "no-new-privileges:true"
+
+    # Minimal capabilities
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+
+    # Tmpfs mounts for temporary directories
+    tmpfs:
+      - /tmp:rw,size=50m,mode=1777
+      - /run:rw,size=10m,mode=1777
+
+    # Container restart policy
+    restart: unless-stopped
+
+    # Working directory
+    working_dir: /var/www/html
+
+  db:
+    image: mariadb:10.8
+    container_name: mysql_container
+    hostname: mysql-hostname
+
+    labels:
+      - "maintainer=farajassulai@gmail.com"
+      - "app=wordpress_project"
+      - "type=mysql"
+
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wpuser
+      MYSQL_PASSWORD: wppassword
+      MYSQL_ROOT_PASSWORD: rootpass
+      # MySQL configuration to handle warnings
+      MYSQL_INITDB_SKIP_TZINFO: 1
+      DB_VER: 5.7
+      USER_ID: 1112
+      USER_NAME: sqlusr
+      GROUP_ID: 1112
+      GROUP_NAME: sqlgrp
+      APP_ENV: production
+      BASH_SHELL: /bin/bash
+      APP_DIR: /var/lib/mysql
+      MOUNT1: /var/lib/mysql/data
+      MOUNT2: /var/lib/mysql/logs
+      TZ: GMT+2
+
+    command: >
+      bash -c "
+      mkdir -p /run/mysqld &&
+      chown mysql:mysql /run/mysqld &&
+      exec docker-entrypoint.sh mysqld
+      --explicit_defaults_for_timestamp=1
+      --open_files_limit=5000
+      --table_open_cache=2000
+      "
+
+    volumes:
+      - db_data_clean:/var/lib/mysql
+      - db_logs:/var/lib/mysql/logs:rw
+      - mysql_run:/run/mysqld
+
+    networks:
+      - wordpress-project-network
+
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+
+    ports:
+      - "3306:3306"
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+        reservations:
+          memory: 256M
+
+    ulimits:
+      nofile:
+        soft: 5000
+        hard: 5000
+      nproc:
+        soft: 512
+        hard: 1024
+
+    # Healthcheck for MySQL
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+        compress: "true"
+
+    security_opt:
+      - "no-new-privileges:true"
+
+    # Minimal capabilities
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+
+    # Tmpfs mounts for temporary directories
+    tmpfs:
+      - /tmp:rw,size=50m,mode=1777
+      - /run:rw,size=10m,mode=1777
+      - /run/mysqld:rw,size=10m,mode=0755
+
+    # Container restart policy
+    restart: unless-stopped
+
+    # Working directory
+    working_dir: /var/lib/mysql
+
+# Define named volumes
+volumes:
+  wordpress_data:
+    driver: local
+  wordpress_logs:
+    driver: local
+  db_data_fresh:
+    driver: local
+  db_logs:
+    driver: local
+  mysql_run:
+    driver: local
+
+networks:
+  wordpress-project-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.0.0/24

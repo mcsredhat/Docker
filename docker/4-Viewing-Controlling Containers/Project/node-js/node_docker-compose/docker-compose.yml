@@ -1,0 +1,88 @@
+version: "3.8"
+
+services:
+  node-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: ${NODE_ENV:-production}
+        USERNAME: nodeuser  # Changed from APP_USER to match Dockerfile
+        USERID: 1010        # Changed from APP_UID to match Dockerfile
+        GROUPNAME: nodegroup # Changed from APP_GROUP to match Dockerfile
+        GROUPID: 1010       # Changed from APP_GID to match Dockerfile
+
+    container_name: node-app
+    restart: unless-stopped
+
+    # Dependencies
+    # depends_on:
+    #   mongodb:
+    #     condition: service_healthy
+
+    # Port mapping
+    ports:
+      - "${PORT:-3000}:3000"
+
+    # Environment file
+    env_file:
+      - .env
+
+    # Additional environment variables
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      # - MONGODB_URL=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017/myapp?authSource=admin
+
+    # Volumes
+    volumes:
+      - app-logs:/app/logs  # Changed from /node/logs to /app/logs to match Dockerfile
+      - /app/node_modules   # Anonymous volume for node_modules
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=node-app"
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+        reservations:
+          memory: 128M
+          cpus: "0.25"
+
+    # Read-only root filesystem (uncomment if your app supports it)
+    # read_only: true
+
+    networks:
+      - app-network
+
+# Named volumes
+volumes:
+  app-logs:
+    driver: local
+
+# Networks
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

@@ -1,0 +1,130 @@
+version: "3.8"
+
+services:
+  mysql-db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SQLVER: ${SQLVER}
+        USER_ID: ${USER_ID}
+        USER_NAME: ${USER_NAME}
+        GROUP_ID: ${GROUP_ID}
+        GROUP_NAME: ${GROUP_NAME}
+        APP_PORT: ${APP_PORT}
+        APP_ENV: ${APP_ENV}
+        BASH_SHELL: ${BASH_SHELL}
+        APP_DIR: ${APP_DIR}
+        MOUNT1: ${MOUNT1}
+        MOUNT2: ${MOUNT2}
+        MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+        MYSQL_DATABASE: ${MYSQL_DATABASE}
+        MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+        MYSQL_USER: ${MYSQL_USER}
+    container_name: mysql-project
+    hostname: mysql-host
+    labels:
+      - "maintainer=farajassulai"
+      - "app=mysql-database"
+      - "service=database"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: ${TZ}
+    networks:
+      - app-network
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - mysql_logs:/var/log/mysql
+      - ./my.cnf:/etc/mysql/conf.d/custom.cnf:ro
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: '0.5'
+        reservations:
+          memory: 512m
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "10"
+        compress: "true"
+    restart: unless-stopped
+
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress_container
+    hostname: wordpress-hostname
+    labels:
+      - "maintainer=farajassulai@gmail.com"
+      - "app=wordpress_project"
+      - "type=wordpress"
+    environment:
+      WORDPRESS_DB_HOST: mysql-db:3306
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: ${TZ}
+    networks:
+      - app-network
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    ports:
+      - "8080:80"
+    volumes:
+      - wordpress_data:/var/www/html
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/wp-admin/install.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+        compress: "true"
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+    driver: local
+  mysql_logs:
+    driver: local
+  wordpress_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/24
