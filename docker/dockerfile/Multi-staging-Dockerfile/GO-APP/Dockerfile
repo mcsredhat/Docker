@@ -1,27 +1,27 @@
 # =============================================================================
-# REACT 4-STAGE MULTI-STAGE DOCKERFILE TEMPLATE (NON-ROOT USER)
+# GO 4-STAGE MULTI-STAGE DOCKERFILE TEMPLATE (NON-ROOT USER)
 # =============================================================================
 # This template provides maximum optimization with 4 distinct stages:
 # 1. Base Stage: Common foundation and system setup
 # 2. Dependencies Stage: Install and cache dependencies
 # 3. Build Stage: Code quality checks, testing, and building
-# 4. Production Stage: Clean runtime environment with nginx (non-root)
+# 4. Production Stage: Clean runtime environment (non-root)
 # =============================================================================
 
 # ================================
 # Stage 1: Base Stage
 # ================================
-FROM node:18-alpine AS base
+FROM golang:1.21-alpine AS base
 
 # ---------- Base Arguments ----------
-ARG APP_NAME="reactapp"
+ARG APP_NAME="goapp"
 ARG APP_VERSION="1.0.0"
 ARG BUILD_ENV="base"
 ARG APP_DIR="/app"
 ARG USER_ID=1001
-ARG USER_NAME="reactuser"
+ARG USER_NAME="gouser"
 ARG GROUP_ID=1001
-ARG GROUP_NAME="reactgroup"
+ARG GROUP_NAME="gogroup"
 ARG TIMEZONE="UTC"
 
 # ---------- Base Environment Variables ----------
@@ -34,7 +34,9 @@ ENV APP_NAME=${APP_NAME} \
     GROUP_ID=${GROUP_ID} \
     GROUP_NAME=${GROUP_NAME} \
     TZ=${TIMEZONE} \
-    PATH="${APP_DIR}/bin:${PATH}"
+    PATH="${APP_DIR}/bin:${PATH}" \
+    CGO_ENABLED=0 \
+    GOOS=linux
 
 # ---------- Set Working Directory ----------
 WORKDIR ${APP_DIR}
@@ -45,6 +47,7 @@ RUN apk update && apk add --no-cache \
     curl \
     wget \
     git \
+    tzdata \
     build-base \
     bash \
     make && \
@@ -63,24 +66,18 @@ RUN mkdir -p ${APP_DIR} && \
 # ================================
 FROM base AS dependencies
 
-# ---------- Copy Package Files First (for better caching) ----------
-COPY package.json ${APP_DIR}/
-COPY package-lock.json* ${APP_DIR}/
-COPY yarn.lock* ${APP_DIR}/
-COPY pnpm-lock.yaml* ${APP_DIR}/
+# ---------- Copy Go Module Files First (for better caching) ----------
+COPY go.mod go.sum* ${APP_DIR}/
 
-# ---------- Set Ownership of Package Files ----------
+# ---------- Set Ownership of Module Files ----------
 RUN chown -R ${USER_NAME}:${GROUP_NAME} ${APP_DIR}
 
 # ---------- Switch to Build User ----------
 USER ${USER_NAME}
 
-# ---------- Configure npm settings ----------
-RUN npm config set fund false && npm config set audit-level moderate
-
-# ---------- Install Dependencies with Caching ----------
-RUN --mount=type=cache,target=/home/${USER_NAME}/.npm,uid=${USER_ID},gid=${GROUP_ID} \
-    npm install --no-audit --prefer-offline --progress=false
+# ---------- Download Go Dependencies with Caching ----------
+RUN --mount=type=cache,target=/go/pkg/mod,uid=${USER_ID},gid=${GROUP_ID} \
+    go mod download && go mod verify
 
 # ================================
 # Stage 3: Build Stage
@@ -88,66 +85,53 @@ RUN --mount=type=cache,target=/home/${USER_NAME}/.npm,uid=${USER_ID},gid=${GROUP
 FROM dependencies AS build
 
 # ---------- Copy Source Code ----------
-COPY --chown=${USER_NAME}:${GROUP_NAME} src/ ${APP_DIR}/src/
-COPY --chown=${USER_NAME}:${GROUP_NAME} public/ ${APP_DIR}/public/
-COPY --chown=${USER_NAME}:${GROUP_NAME} tsconfig.json* ${APP_DIR}/
-COPY --chown=${USER_NAME}:${GROUP_NAME} .eslintrc* ${APP_DIR}/
-COPY --chown=${USER_NAME}:${GROUP_NAME} .prettierrc* ${APP_DIR}/
-COPY --chown=${USER_NAME}:${GROUP_NAME} README.md* ${APP_DIR}/
+COPY --chown=${USER_NAME}:${GROUP_NAME} . ${APP_DIR}/
 
-# ---------- Code Quality Checks (Optional - don't fail build if scripts don't exist) ----------
-RUN npm run lint 2>/dev/null || echo "Lint check skipped or completed"
-RUN npm run format:check 2>/dev/null || echo "Format check skipped or completed"
-RUN npx tsc --noEmit --skipLibCheck 2>/dev/null || echo "TypeScript check skipped or completed"
+# ---------- Code Quality Checks ----------
+RUN go vet ./...
+RUN go fmt ./...
 
 # ---------- Run Tests ----------
-RUN CI=true npm run test -- --coverage --watchAll=false --passWithNoTests 2>/dev/null || echo "Tests skipped or completed"
+RUN go test -v -race -coverprofile=coverage.out ./...
 
 # ---------- Build Application ----------
-RUN npm run build
+RUN --mount=type=cache,target=/go/pkg/mod,uid=${USER_ID},gid=${GROUP_ID} \
+    --mount=type=cache,target=/root/.cache/go-build,uid=${USER_ID},gid=${GROUP_ID} \
+    CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o main .
 
 # ---------- Verify Build Artifacts ----------
-RUN test -d ./build || (echo "Build artifacts not found in ./build directory" && exit 1)
-RUN ls -la build/ && test -f build/index.html && echo "Build verified successfully"
-RUN du -sh build/
-
-# ---------- Security Audit (Non-blocking) ----------
-RUN npm audit --audit-level=high || echo "Security audit completed with warnings"
+RUN ls -la main && file main && echo "Build verified successfully"
 
 # ---------- Build Stage Cleanup ----------
-RUN rm -rf node_modules/.cache && \
-    rm -rf /tmp/* && \
-    rm -rf /home/${USER_NAME}/.npm/_cacache && \
-    rm -rf src/ public/ && \
-    npm cache clean --force
+RUN rm -rf /tmp/* && \
+    go clean -cache -modcache
 
 # ================================
 # Stage 4: Production Stage (Non-Root)
 # ================================
-FROM nginx:alpine AS production
+FROM alpine:latest AS production
 
 # ---------- Metadata Labels ----------
 LABEL maintainer="farajassulai@gmail.com" \
-    org.label-schema.name="reactapp" \
-    org.label-schema.description="React application served with nginx (non-root)" \
+    org.label-schema.name="goapp" \
+    org.label-schema.description="Go application (non-root)" \
     org.label-schema.version="1.0.0" \
     org.label-schema.schema-version="1.0" \
     stage="production"
 
 # ---------- Production Arguments ----------
-ARG APP_NAME="reactapp"
+ARG APP_NAME="goapp"
 ARG APP_VERSION="1.0.0"
 ARG APP_PORT=8080
 ARG HEALTH_CHECK_PATH="/health"
 ARG TIMEZONE="UTC"
-ARG DATA_DIR="/var/lib/reactapp"
-ARG LOGS_DIR="/var/log/reactapp"
-ARG CONFIG_DIR="/etc/reactapp"
-ARG SHELL_PATH="/bin/sh"
+ARG DATA_DIR="/var/lib/goapp"
+ARG LOGS_DIR="/var/log/goapp"
+ARG CONFIG_DIR="/etc/goapp"
 ARG USER_ID=1001
-ARG USER_NAME="reactuser"
+ARG USER_NAME="gouser"
 ARG GROUP_ID=1001
-ARG GROUP_NAME="reactgroup"
+ARG GROUP_NAME="gogroup"
 
 # ---------- Production Environment Variables ----------
 ENV APP_NAME=${APP_NAME} \
@@ -155,11 +139,9 @@ ENV APP_NAME=${APP_NAME} \
     APP_PORT=${APP_PORT} \
     HEALTH_CHECK_PATH=${HEALTH_CHECK_PATH} \
     TZ=${TIMEZONE} \
-    NODE_ENV=production \
     DATA_DIR=${DATA_DIR} \
     LOGS_DIR=${LOGS_DIR} \
     CONFIG_DIR=${CONFIG_DIR} \
-    SHELL_PATH=${SHELL_PATH} \
     USER_ID=${USER_ID} \
     USER_NAME=${USER_NAME} \
     GROUP_ID=${GROUP_ID} \
@@ -178,26 +160,17 @@ RUN addgroup -g ${GROUP_ID} ${GROUP_NAME} && \
     adduser -u ${USER_ID} -G ${GROUP_NAME} -D -s /bin/sh ${USER_NAME}
 
 # ---------- Create Application Directories ----------
-RUN mkdir -p ${DATA_DIR} ${LOGS_DIR} ${CONFIG_DIR} /var/cache/nginx /var/run/nginx && \
-    chown -R ${USER_NAME}:${GROUP_NAME} ${DATA_DIR} ${LOGS_DIR} ${CONFIG_DIR} /var/cache/nginx /var/run/nginx /usr/share/nginx/html
+RUN mkdir -p ${DATA_DIR} ${LOGS_DIR} ${CONFIG_DIR} /app && \
+    chown -R ${USER_NAME}:${GROUP_NAME} ${DATA_DIR} ${LOGS_DIR} ${CONFIG_DIR} /app
+
+# ---------- Set Working Directory ----------
+WORKDIR /app
 
 # ---------- Copy Build Artifacts from Build Stage ----------
-COPY --from=build --chown=${USER_NAME}:${GROUP_NAME} /app/build /usr/share/nginx/html
+COPY --from=build --chown=${USER_NAME}:${GROUP_NAME} /app/main ./
 
-# ---------- Copy nginx configuration ----------
-COPY --chown=${USER_NAME}:${GROUP_NAME} nginx.conf /etc/nginx/nginx.conf
-
-# ---------- Copy Entrypoint Script ----------
-COPY --chown=${USER_NAME}:${GROUP_NAME} entrypoint.sh /usr/local/bin/entrypoint.sh
-
-# ---------- Set Entrypoint Script Permissions ----------
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-# ---------- Create health check endpoint ----------
-RUN echo '<!DOCTYPE html><html><head><title>Health Check</title></head><body><h1>OK</h1><p>Service is running on port 8080</p></body></html>' > /usr/share/nginx/html/health
-
-# ---------- Set proper ownership ----------
-RUN chown -R ${USER_NAME}:${GROUP_NAME} /usr/share/nginx/html
+# ---------- Ensure Binary is Executable ----------
+RUN chmod +x ./main
 
 # ---------- Setup Volumes ----------
 VOLUME ["${DATA_DIR}", "${LOGS_DIR}"]
@@ -218,8 +191,5 @@ STOPSIGNAL SIGTERM
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${APP_PORT}${HEALTH_CHECK_PATH} || exit 1
 
-# ---------- Use Entrypoint Script ----------
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-
 # ---------- Default Command ----------
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["./main"]
